@@ -1,0 +1,118 @@
+{
+  "info": {
+    "name": "music-rec-backend",
+    "_postman_id": "5d4a9f7b-1111-2222-3333-abcdefabcdef",
+    "description": "Spring Boot backend + offline Python scripts",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "User - Create",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api","v1","users"] },
+        "body": { "mode": "raw", "raw": "{\n  \"displayName\": \"Alice\"\n}" }
+      }
+    },
+    {
+      "name": "Tracks - List",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/v1/tracks", "host": ["{{baseUrl}}"], "path": ["api","v1","tracks"] }
+      }
+    },
+    {
+      "name": "Interactions - Create",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "{{baseUrl}}/api/v1/interactions", "host": ["{{baseUrl}}"], "path": ["api","v1","interactions"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"trackId\": \"{{trackId}}\",\n  \"type\": \"PLAY\",\n  \"positionMs\": 0\n}"
+        }
+      }
+    },
+    {
+      "name": "Ratings - Upsert",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "{{baseUrl}}/api/v1/ratings", "host": ["{{baseUrl}}"], "path": ["api","v1","ratings"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"trackId\": \"{{trackId}}\",\n  \"value\": 1\n}"
+        }
+      }
+    },
+    {
+      "name": "Recommendations - Get",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/recommendations?userId={{userId}}&limit=20",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","v1","recommendations"],
+          "query": [
+            { "key": "userId", "value": "{{userId}}" },
+            { "key": "limit", "value": "20" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Admin - Upload Track (manual multipart in Postman)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "X-Admin-Token", "value": "{{adminToken}}" }],
+        "url": { "raw": "{{baseUrl}}/api/admin/v1/tracks/upload", "host": ["{{baseUrl}}"], "path": ["api","admin","v1","tracks","upload"] },
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "file", "type": "file", "src": "" },
+            { "key": "metadata", "type": "text", "value": "{\"title\":\"Song\",\"artist\":\"Artist\",\"durationSeconds\":210}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Admin - Analyze Track",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "X-Admin-Token", "value": "{{adminToken}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/v1/tracks/{{trackId}}/analyze",
+          "host": ["{{baseUrl}}"],
+          "path": ["api","admin","v1","tracks","{{trackId}}","analyze"]
+        }
+      }
+    },
+    {
+      "name": "Admin - Train",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-Admin-Token", "value": "{{adminToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/admin/v1/train", "host": ["{{baseUrl}}"], "path": ["api","admin","v1","train"] },
+        "body": { "mode": "raw", "raw": "{\n  \"notes\": \"first run\"\n}" }
+      }
+    },
+    {
+      "name": "Admin - Metrics",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-Admin-Token", "value": "{{adminToken}}" }],
+        "url": { "raw": "{{baseUrl}}/api/admin/v1/metrics", "host": ["{{baseUrl}}"], "path": ["api","admin","v1","metrics"] }
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "adminToken", "value": "change_me" },
+    { "key": "userId", "value": "" },
+    { "key": "trackId", "value": "" }
+  ]
+}

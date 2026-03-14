@@ -1,0 +1,5 @@
+# Minimal stub requires no deps.
+# For real audio analysis you likely want:
+# librosa
+# numpy
+# soundfile
