@@ -8,11 +8,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.example.musicrec.dto.admin.JamendoImportRequest;
+import com.example.musicrec.dto.admin.JamendoImportResponse;
+import com.example.musicrec.service.admin.JamendoBulkImportService;
+
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/admin/v1")
 public class AdminController {
+    private final JamendoBulkImportService jamendoBulkImportService;
 
     private final AdminService adminService;
 
@@ -27,6 +32,12 @@ public class AdminController {
                 .message("Uploaded successfully")
                 .build();
     }
+
+    @PostMapping("/import/jamendo")
+    public JamendoImportResponse importJamendo(@Valid @RequestBody JamendoImportRequest request) {
+        return jamendoBulkImportService.importMoodthemeSubset(request);
+    }
+
 
     @PostMapping("/tracks/{trackId}/analyze")
     public AdminAnalyzeResponse analyze(@PathVariable java.util.UUID trackId) {

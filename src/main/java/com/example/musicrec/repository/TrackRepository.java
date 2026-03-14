@@ -8,4 +8,6 @@ import java.util.UUID;
 
 public interface TrackRepository extends JpaRepository<Track, UUID> {
     List<Track> findTop50ByOrderByCreatedAtDesc();
+
+    boolean existsByAudioOriginalName(String audioOriginalName);
 }
