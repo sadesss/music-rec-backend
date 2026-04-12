@@ -53,7 +53,7 @@ public class AppProperties {
          * Script names (resolved relative to scriptsDir).
          */
         private String analyzeScript = "analyze_track.py";
-        private String trainScript = "train_model.py";
+        private String trainScript = "train.py";
 
         /**
          * Max allowed runtime for python scripts.

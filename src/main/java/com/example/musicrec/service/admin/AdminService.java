@@ -86,7 +86,7 @@ public class AdminService {
                 "--notes", notes == null ? "" : notes
         );
 
-        pythonRunner.runScript("train_model.py", args);
+        pythonRunner.runScript("train.py", args);
 
         Map<String, Object> metrics = artifactService.readMetricsOrEmpty();
         String modelVersion = artifactService.readModelVersionOrUnknown();
