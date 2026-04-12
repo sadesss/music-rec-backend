@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8"/>
+    <title>Авторизация</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .container {
+            background: #1e293b;
+            padding: 40px;
+            border-radius: 12px;
+            width: 350px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            border: none;
+            background: #334155;
+            color: white;
+        }
+
+        input::placeholder {
+            color: #94a3b8;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .login-btn {
+            background: #22c55e;
+            color: black;
+        }
+
+        .register-btn {
+            background: #3b82f6;
+            color: white;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .divider {
+            text-align: center;
+            margin: 20px 0;
+            color: #94a3b8;
+        }
+
+        #status {
+            margin-top: 10px;
+            color: #f87171;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <h2>Вход</h2>
+
+    <input id="email" placeholder="Email"/>
+    <input id="password" type="password" placeholder="Пароль"/>
+
+    <button class="login-btn" onclick="login()">Войти</button>
+
+    <div class="divider">или</div>
+
+    <h2>Регистрация</h2>
+
+    <input id="regName" placeholder="Имя"/>
+    <input id="regEmail" placeholder="Email"/>
+    <input id="regPassword" type="password" placeholder="Пароль"/>
+
+    <button class="register-btn" onclick="register()">Зарегистрироваться</button>
+
+    <p id="status"></p>
+
+</div>
+
+<script>
+    async function login() {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+
+        const r = await fetch("/api/v1/auth/login", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({email, password})
+        });
+
+        const data = await r.json();
+
+        if (!r.ok) {
+            document.getElementById("status").innerText = data.message || "Ошибка входа";
+            return;
+        }
+
+        localStorage.setItem("musicrec_session", JSON.stringify(data));
+        window.location.href = "/player.html";
+    }
+
+    async function register() {
+        const email = document.getElementById("regEmail").value;
+        const password = document.getElementById("regPassword").value;
+        const displayName = document.getElementById("regName").value;
+
+        const r = await fetch("/api/v1/auth/register", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({email, password, displayName})
+        });
+
+        const data = await r.json();
+
+        if (!r.ok) {
+            document.getElementById("status").innerText = data.message || "Ошибка регистрации";
+            return;
+        }
+
+        document.getElementById("status").innerText = "Регистрация успешна!";
+    }
+</script>
+
+</body>
+</html>

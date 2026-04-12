@@ -31,6 +31,8 @@ public class SecurityConfig {
                 // Health
                 .requestMatchers("/actuator/health").permitAll()
                 // Everything else permitted (admin is guarded by filter if enabled)
+                .requestMatchers("/", "/demo.html", "/auth.html", "/user.html", "/js/**", "/css/**").permitAll()
+                .requestMatchers("/api/v1/auth/**").permitAll()
                 .anyRequest().permitAll()
         );
 
@@ -41,5 +43,10 @@ public class SecurityConfig {
         http.httpBasic(Customizer.withDefaults());
 
         return http.build();
+    }
+
+    @Bean
+    public org.springframework.security.crypto.password.PasswordEncoder passwordEncoder() {
+        return new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
     }
 }

@@ -18,6 +18,12 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private String displayName;
 
+    @Column(unique = true)
+    private String email;
+
+    @Column(name = "password_hash")
+    private String passwordHash;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role = UserRole.USER;
