@@ -10,6 +10,7 @@ import com.example.musicrec.repository.TrackRepository;
 import com.example.musicrec.service.TrackService;
 import com.example.musicrec.service.artifacts.ArtifactService;
 import com.example.musicrec.service.python.PythonRunner;
+import com.example.musicrec.service.storage.FileStorageService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
@@ -32,6 +33,7 @@ public class AdminService {
 
     private final ArtifactService artifactService;
     private final PythonRunner pythonRunner;
+    private final FileStorageService fileStorageService;
     private final ObjectMapper objectMapper;
 
     private final TrainingDataExportService trainingDataExportService;
@@ -41,24 +43,11 @@ public class AdminService {
         return trackService.createFromUpload(metadata, mp3);
     }
 
-    /**
-     * Runs offline python analyze script for a track and upserts TrackFeature entities.
-     *
-     * Integration point:
-     * - python/analyze_track.py must write a JSON array with items:
-     *   { "key": "...", "valueString": "...", "valueNumber": 123.0, "confidence": 0.9 }
-     */
     public AnalyzeResult analyzeTrack(UUID trackId) {
         artifactService.ensureDirs();
 
         Track track = trackService.get(trackId);
-
-        Path audioPath = Path.of(trackService.get(trackId).getAudioKey());
-        // Better: resolve absolute path via storage service in TrackService,
-        // but TrackService currently returns Resource for streaming. Here we re-resolve via audioKey.
-        // We'll resolve absolute using Track.audioKey + config:
-        Path mp3AbsPath = com.example.musicrec.util.PathUtils.resolveAudioPath(track.getAudioKey(), artifactService);
-
+        Path mp3AbsPath = fileStorageService.resolveAudioPath(track.getAudioKey());
         Path featuresJson = artifactService.featuresJsonPath(trackId);
 
         List<String> args = List.of(
@@ -109,13 +98,15 @@ public class AdminService {
             if (!Files.exists(featuresJson)) {
                 throw new BadRequestException("Features JSON not found: " + featuresJson);
             }
-            String json = Files.readString(featuresJson);
 
+            String json = Files.readString(featuresJson);
             List<FeatureItem> items = objectMapper.readValue(json, new TypeReference<>() {});
             int count = 0;
 
             for (FeatureItem item : items) {
-                if (item.key == null || item.key.isBlank()) continue;
+                if (item.key == null || item.key.isBlank()) {
+                    continue;
+                }
 
                 TrackFeature f = trackFeatureRepository
                         .findByTrackIdAndFeatureKey(track.getId(), item.key)

@@ -2,14 +2,95 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8" />
-    <title>MusicRec Demo</title>
+    <title>MusicRec Admin Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 24px;
+            max-width: 1100px;
+        }
+        form, .panel {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        input, textarea, button {
+            margin-top: 6px;
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            cursor: pointer;
+            width: auto;
+            padding: 10px 16px;
+            margin-top: 14px;
+        }
+        .track-card {
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        .track-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .status {
+            white-space: pre-wrap;
+            background: #f7f7f7;
+            padding: 12px;
+            border-radius: 8px;
+        }
+    </style>
 </head>
 <body>
-<h1>MusicRec Demo</h1>
+<h1>MusicRec Admin UI</h1>
 
-<p>Откройте DevTools Console и используйте функции из js/*.js</p>
+<form id="uploadForm">
+    <h2>Загрузка трека</h2>
 
-<script src="/js/user-demo.js"></script>
+    <label for="title">Название</label>
+    <input id="title" name="title" required />
+
+    <label for="artist">Исполнитель</label>
+    <input id="artist" name="artist" />
+
+    <label for="album">Альбом</label>
+    <input id="album" name="album" />
+
+    <label for="genre">Жанр</label>
+    <input id="genre" name="genre" />
+
+    <label for="durationSeconds">Длительность, сек</label>
+    <input id="durationSeconds" name="durationSeconds" type="number" min="1" />
+
+    <label for="metadataText">Метаданные</label>
+    <textarea id="metadataText" name="metadataText" rows="4"></textarea>
+
+    <label for="file">MP3 файл</label>
+    <input id="file" name="file" type="file" accept=".mp3,audio/mpeg" required />
+
+    <button type="submit">Загрузить трек</button>
+</form>
+
+<div class="panel">
+    <h2>Статус</h2>
+    <div id="status" class="status">Готово</div>
+</div>
+
+<div class="panel">
+    <h2>Последние треки</h2>
+    <button id="refreshBtn">Обновить список</button>
+    <div id="tracks"></div>
+</div>
+
 <script src="/js/admin-demo.js"></script>
 </body>
 </html>

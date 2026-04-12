@@ -10,4 +10,6 @@ import java.util.UUID;
 public interface TrackFeatureRepository extends JpaRepository<TrackFeature, UUID> {
     List<TrackFeature> findByTrackId(UUID trackId);
     Optional<TrackFeature> findByTrackIdAndFeatureKey(UUID trackId, String featureKey);
+
+    List<TrackFeature> findByTrackIdIn(List<UUID> trackIds);
 }

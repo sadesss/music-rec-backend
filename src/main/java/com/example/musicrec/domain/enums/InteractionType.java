@@ -4,5 +4,7 @@ public enum InteractionType {
     PLAY,
     PAUSE,
     SKIP,
-    REPLAY
+    FINISH,
+    LIKE,
+    DISLIKE
 }

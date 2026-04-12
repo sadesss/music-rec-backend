@@ -50,6 +50,7 @@ public class TrackController {
                 .album(t.getAlbum())
                 .originalGenre(t.getOriginalGenre())
                 .durationSeconds(t.getDurationSeconds())
+                .audioUrl("/api/v1/tracks/" + t.getId() + "/stream")
                 .features(trackService.featuresAsMap(t.getId()))
                 .createdAt(t.getCreatedAt())
                 .build();

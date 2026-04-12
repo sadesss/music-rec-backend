@@ -9,7 +9,14 @@ import java.util.UUID;
 @Builder
 public class RecommendationItemResponse {
     UUID trackId;
+    String title;
+    String artist;
+    String album;
+    String originalGenre;
+    String audioUrl;
+
     Double score;
     Integer rank;
     String modelVersion;
+    String reason;
 }

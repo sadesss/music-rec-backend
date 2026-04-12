@@ -32,7 +32,15 @@ public class PythonRunner {
         Path scriptPath = scriptsDir.resolve(scriptName);
 
         List<String> cmd = new ArrayList<>();
-        cmd.add(props.getPython().getExecutable());
+        String executable = props.getPython().getExecutable();
+
+        cmd.add(executable);
+
+        // Windows launcher: py -3 script.py
+        if ("py".equalsIgnoreCase(executable)) {
+            cmd.add("-3");
+        }
+
         cmd.add(scriptPath.toString());
         cmd.addAll(args);
 
@@ -57,7 +65,9 @@ public class PythonRunner {
             boolean finished = process.waitFor(props.getPython().getTimeoutSeconds(), TimeUnit.SECONDS);
             if (!finished) {
                 process.destroyForcibly();
-                throw new ExternalProcessException("Python script timed out after " + props.getPython().getTimeoutSeconds() + " seconds: " + scriptName);
+                throw new ExternalProcessException(
+                        "Python script timed out after " + props.getPython().getTimeoutSeconds() + " seconds: " + scriptName
+                );
             }
 
             int exit = process.exitValue();
@@ -65,7 +75,9 @@ public class PythonRunner {
             es.shutdownNow();
 
             if (exit != 0) {
-                throw new ExternalProcessException("Python script failed (exit=" + exit + "): " + scriptName + "\nOutput:\n" + out);
+                throw new ExternalProcessException(
+                        "Python script failed (exit=" + exit + "): " + scriptName + "\nCommand: " + String.join(" ", cmd) + "\nOutput:\n" + out
+                );
             }
 
             return new PythonResult(exit, out);
@@ -73,7 +85,10 @@ public class PythonRunner {
         } catch (ExternalProcessException e) {
             throw e;
         } catch (Exception e) {
-            throw new ExternalProcessException("Failed to run python script: " + scriptName + " (" + e.getMessage() + ")", e);
+            throw new ExternalProcessException(
+                    "Failed to run python script: " + scriptName + " (" + e.getMessage() + ")",
+                    e
+            );
         }
     }
 

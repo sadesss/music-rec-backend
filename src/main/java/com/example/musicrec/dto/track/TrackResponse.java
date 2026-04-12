@@ -16,7 +16,8 @@ public class TrackResponse {
     String album;
     String originalGenre;
     Integer durationSeconds;
+    String audioUrl;
 
-    Map<String, Object> features; // key -> value
+    Map<String, Object> features;
     Instant createdAt;
 }

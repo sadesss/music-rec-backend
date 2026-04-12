@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <title>MusicRec User Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; max-width: 1200px; }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .panel { border: 1px solid #ddd; border-radius: 10px; padding: 16px; }
+        .track { border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+        .title { font-weight: 700; font-size: 18px; }
+        button { margin-right: 8px; margin-top: 8px; }
+        .status { white-space: pre-wrap; background: #f7f7f7; padding: 12px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+<h1>MusicRec User Demo</h1>
+
+<div class="panel">
+    <button id="createUserBtn">Создать тестового пользователя</button>
+    <button id="loadTracksBtn">Загрузить треки</button>
+    <button id="loadRecoBtn">Обновить рекомендации</button>
+    <div id="status" class="status">Готово</div>
+</div>
+
+<div class="row">
+    <div class="panel">
+        <h2>Каталог</h2>
+        <div id="catalog"></div>
+    </div>
+    <div class="panel">
+        <h2>Рекомендации</h2>
+        <div id="recommendations"></div>
+    </div>
+</div>
+
+<script src="/js/user-demo.js"></script>
+</body>
+</html>

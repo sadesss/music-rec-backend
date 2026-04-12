@@ -8,4 +8,6 @@ import java.util.UUID;
 
 public interface InteractionRepository extends JpaRepository<Interaction, UUID> {
     List<Interaction> findTop200ByUserIdOrderByEventTimeDesc(UUID userId);
+    List<Interaction> findByUserIdOrderByEventTimeDesc(UUID userId);
+    long countByTrackId(UUID trackId);
 }
