@@ -11,9 +11,6 @@ import java.util.UUID;
 public class CreateInteractionRequest {
 
     @NotNull
-    private UUID userId;
-
-    @NotNull
     private UUID trackId;
 
     @NotNull

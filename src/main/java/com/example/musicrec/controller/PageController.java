@@ -8,11 +8,16 @@ public class PageController {
 
     @GetMapping({"/", "/player"})
     public String playerPage() {
-        return "player";
+        return "forward:/player.html";
+    }
+
+    @GetMapping("/auth")
+    public String authPage() {
+        return "forward:/auth.html";
     }
 
     @GetMapping("/admin")
     public String adminPage() {
-        return "admin";
+        return "forward:/admin";
     }
 }

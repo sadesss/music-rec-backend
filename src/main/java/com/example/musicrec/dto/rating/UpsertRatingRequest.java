@@ -9,13 +9,10 @@ import java.util.UUID;
 public class UpsertRatingRequest {
 
     @NotNull
-    private UUID userId;
-
-    @NotNull
     private UUID trackId;
 
     /**
-     * Assumption: -1..5 allowed; validate in service.
+     * Allowed: -1 and 1..5
      */
     @NotNull
     private Integer value;

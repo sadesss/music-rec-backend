@@ -1,97 +1,44 @@
-const ADMIN_TOKEN = "change_me";
+const SESSION_KEY = "musicrec_session";
+let session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
 
-function adminHeaders() {
-  return { "X-Admin-Token": ADMIN_TOKEN };
+function clearSessionAndRedirect() {
+  localStorage.removeItem(SESSION_KEY);
+  window.location.href = "/auth";
 }
 
-async function uploadTrack(file, metadata) {
-  const fd = new FormData();
-  fd.append("file", file);
-  fd.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-
-  const r = await fetch("/api/admin/v1/tracks/upload", {
-    method: "POST",
-    headers: adminHeaders(),
-    body: fd
-  });
-
-  if (!r.ok) {
-    throw new Error(await r.text());
+async function authFetch(path, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (session?.sessionToken) {
+    headers["X-Session-Token"] = session.sessionToken;
   }
 
-  return r.json();
-}
+  const response = await fetch(path, { ...options, headers });
 
-async function listTracks() {
-  const r = await fetch("/api/v1/tracks");
-  if (!r.ok) {
-    throw new Error(await r.text());
+  if (response.status === 401 || response.status === 403) {
+    clearSessionAndRedirect();
+    throw new Error("Сессия недействительна или доступ запрещён");
   }
-  return r.json();
-}
 
-function setStatus(text) {
-  document.getElementById("status").textContent = text;
-}
-
-function formatTrack(track) {
-  return `
-    <div class="track-card">
-      <div class="track-title">${track.title ?? "Без названия"}</div>
-      <div><strong>Исполнитель:</strong> ${track.artist ?? "-"}</div>
-      <div><strong>Альбом:</strong> ${track.album ?? "-"}</div>
-      <div><strong>Жанр:</strong> ${track.originalGenre ?? "-"}</div>
-      <div><strong>ID:</strong> ${track.id}</div>
-      <audio controls preload="none" src="${track.audioUrl}"></audio>
-    </div>
-  `;
-}
-
-async function refreshTracks() {
-  const container = document.getElementById("tracks");
-  container.innerHTML = "Загрузка...";
-  try {
-    const tracks = await listTracks();
-    container.innerHTML = tracks.length
-      ? tracks.map(formatTrack).join("")
-      : "Треков пока нет";
-  } catch (e) {
-    container.innerHTML = `Ошибка загрузки списка: ${e.message}`;
+  if (!response.ok) {
+    throw new Error(await response.text());
   }
+
+  if (response.status === 204) return null;
+  return response.json();
 }
 
-document.getElementById("uploadForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const fileInput = document.getElementById("file");
-  const file = fileInput.files[0];
-  if (!file) {
-    setStatus("Выбери mp3 файл");
+async function ensureAdmin() {
+  if (!session?.sessionToken) {
+    clearSessionAndRedirect();
     return;
   }
 
-  const metadata = {
-    title: document.getElementById("title").value.trim(),
-    artist: document.getElementById("artist").value.trim(),
-    album: document.getElementById("album").value.trim(),
-    genre: document.getElementById("genre").value.trim(),
-    durationSeconds: document.getElementById("durationSeconds").value
-      ? Number(document.getElementById("durationSeconds").value)
-      : null,
-    metadataText: document.getElementById("metadataText").value.trim()
-  };
+  const me = await authFetch("/api/v1/auth/me", { method: "GET" });
 
-  try {
-    setStatus("Загрузка...");
-    const result = await uploadTrack(file, metadata);
-    setStatus(`Успешно загружено.\ntrackId=${result.trackId}\naudioKey=${result.audioKey}`);
-    e.target.reset();
-    await refreshTracks();
-  } catch (err) {
-    setStatus(`Ошибка загрузки:\n${err.message}`);
+  if (me.role !== "ADMIN") {
+    clearSessionAndRedirect();
+    return;
   }
-});
+}
 
-document.getElementById("refreshBtn").addEventListener("click", refreshTracks);
-
-refreshTracks();
+document.addEventListener("DOMContentLoaded", ensureAdmin);

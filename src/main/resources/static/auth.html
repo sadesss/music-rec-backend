@@ -2,152 +2,81 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8"/>
-    <title>Авторизация</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MusicRec Auth</title>
+    <link rel="stylesheet" href="/css/app.css" />
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #0f172a;
-            color: #e2e8f0;
-            margin: 0;
+        .auth-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .auth-card {
+            padding: 24px;
+        }
+
+        .auth-card form {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
+            flex-direction: column;
+            gap: 12px;
         }
 
-        .container {
-            background: #1e293b;
-            padding: 40px;
-            border-radius: 12px;
-            width: 350px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-
-        h2 {
+        .auth-card h2 {
             margin-top: 0;
-            margin-bottom: 15px;
         }
 
-        input {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            border: none;
-            background: #334155;
-            color: white;
+        .status-wrap {
+            margin-top: 20px;
+            padding: 18px;
         }
 
-        input::placeholder {
-            color: #94a3b8;
-        }
-
-        button {
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .login-btn {
-            background: #22c55e;
-            color: black;
-        }
-
-        .register-btn {
-            background: #3b82f6;
-            color: white;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        .divider {
-            text-align: center;
-            margin: 20px 0;
-            color: #94a3b8;
-        }
-
-        #status {
-            margin-top: 10px;
-            color: #f87171;
-            font-size: 14px;
+        @media (max-width: 900px) {
+            .auth-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
-<body>
+<body class="app-body">
+<div class="app-shell" style="max-width: 1100px; padding-top: 60px;">
+    <section class="hero-bar">
+        <div>
+            <div class="hero-pill">MusicRec</div>
+            <h1 class="hero-title">Авторизация</h1>
+            <p class="hero-subtitle">
+                Вход для пользователей и администраторов через email и пароль.
+            </p>
+        </div>
+    </section>
 
-<div class="container">
+    <div class="auth-grid">
+        <section class="glass-card auth-card">
+            <h2>Вход</h2>
+            <form id="loginForm">
+                <input id="loginEmail" class="form-control-dark" placeholder="Email" required />
+                <input id="loginPassword" class="form-control-dark" type="password" placeholder="Пароль" required />
+                <button type="submit" class="btn-soft">Войти</button>
+            </form>
+        </section>
 
-    <h2>Вход</h2>
+        <section class="glass-card auth-card">
+            <h2>Регистрация</h2>
+            <form id="registerForm">
+                <input id="registerDisplayName" class="form-control-dark" placeholder="Имя" required />
+                <input id="registerEmail" class="form-control-dark" placeholder="Email" required />
+                <input id="registerPassword" class="form-control-dark" type="password" placeholder="Пароль" required />
+                <button type="submit" class="btn-soft">Зарегистрироваться</button>
+            </form>
+        </section>
+    </div>
 
-    <input id="email" placeholder="Email"/>
-    <input id="password" type="password" placeholder="Пароль"/>
-
-    <button class="login-btn" onclick="login()">Войти</button>
-
-    <div class="divider">или</div>
-
-    <h2>Регистрация</h2>
-
-    <input id="regName" placeholder="Имя"/>
-    <input id="regEmail" placeholder="Email"/>
-    <input id="regPassword" type="password" placeholder="Пароль"/>
-
-    <button class="register-btn" onclick="register()">Зарегистрироваться</button>
-
-    <p id="status"></p>
-
+    <section class="glass-card status-wrap">
+        <div class="status-label">Статус</div>
+        <div id="status" class="status-value">Готово</div>
+    </section>
 </div>
 
-<script>
-    async function login() {
-        const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
-
-        const r = await fetch("/api/v1/auth/login", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({email, password})
-        });
-
-        const data = await r.json();
-
-        if (!r.ok) {
-            document.getElementById("status").innerText = data.message || "Ошибка входа";
-            return;
-        }
-
-        localStorage.setItem("musicrec_session", JSON.stringify(data));
-        window.location.href = "/player.html";
-    }
-
-    async function register() {
-        const email = document.getElementById("regEmail").value;
-        const password = document.getElementById("regPassword").value;
-        const displayName = document.getElementById("regName").value;
-
-        const r = await fetch("/api/v1/auth/register", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({email, password, displayName})
-        });
-
-        const data = await r.json();
-
-        if (!r.ok) {
-            document.getElementById("status").innerText = data.message || "Ошибка регистрации";
-            return;
-        }
-
-        document.getElementById("status").innerText = "Регистрация успешна!";
-    }
-</script>
-
+<script src="/js/auth.js"></script>
 </body>
 </html>

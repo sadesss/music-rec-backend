@@ -1,7 +1,7 @@
 const SESSION_KEY = "musicrec_session";
 
 let session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
-let currentUserId = session?.userId || null;
+let currentUser = null;
 
 function setStatus(text) {
   const el = document.getElementById("status");
@@ -31,7 +31,7 @@ async function authFetch(path, options = {}) {
 
   if (response.status === 401 || response.status === 403) {
     clearSessionAndRedirect();
-    throw new Error("Сессия недействительна");
+    throw new Error("Сессия недействительна или доступ запрещён");
   }
 
   if (!response.ok) {
@@ -60,7 +60,11 @@ async function ensureSession() {
     method: "GET"
   });
 
-  currentUserId = me.userId;
+  if (me.role !== "USER" && me.role !== "ADMIN") {
+    throw new Error("Недостаточно прав для пользовательской страницы");
+  }
+
+  currentUser = me;
   return me;
 }
 
@@ -70,14 +74,13 @@ async function listTracks() {
   });
 }
 
-async function sendInteraction({ userId, trackId, type, positionMs = 0, metadataText = null }) {
+async function sendInteraction({ trackId, type, positionMs = 0, metadataText = null }) {
   return authFetch("/api/v1/interactions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      userId,
       trackId,
       type,
       positionMs,
@@ -86,32 +89,23 @@ async function sendInteraction({ userId, trackId, type, positionMs = 0, metadata
   });
 }
 
-async function rate({ userId, trackId, value }) {
+async function rate({ trackId, value }) {
   return authFetch("/api/v1/ratings", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      userId,
       trackId,
       value
     })
   });
 }
 
-async function getRecommendations(userId, limit = 20) {
-  return authFetch(
-    `/api/v1/recommendations?userId=${encodeURIComponent(userId)}&limit=${limit}`,
-    { method: "GET" }
-  );
-}
-
-function ensureUser() {
-  if (!currentUserId) {
-    throw new Error("Пользователь не авторизован");
-  }
-  return currentUserId;
+async function getRecommendations(limit = 20) {
+  return authFetch(`/api/v1/recommendations/me?limit=${limit}`, {
+    method: "GET"
+  });
 }
 
 function escapeHtml(value) {
@@ -191,8 +185,7 @@ function wireAudioEvents(containerId) {
     if (!audio.dataset.handlersBound) {
       audio.addEventListener("play", async () => {
         try {
-          const userId = ensureUser();
-          await sendInteraction({ userId, trackId, type: "PLAY" });
+          await sendInteraction({ trackId, type: "PLAY" });
           setStatus(`Сохранено: PLAY ${trackId}`);
         } catch (e) {
           setStatus(`Ошибка PLAY:\n${e.message}`);
@@ -202,9 +195,7 @@ function wireAudioEvents(containerId) {
       audio.addEventListener("pause", async () => {
         if (audio.ended) return;
         try {
-          const userId = ensureUser();
           await sendInteraction({
-            userId,
             trackId,
             type: "PAUSE",
             positionMs: Math.floor((audio.currentTime || 0) * 1000)
@@ -217,9 +208,7 @@ function wireAudioEvents(containerId) {
 
       audio.addEventListener("ended", async () => {
         try {
-          const userId = ensureUser();
           await sendInteraction({
-            userId,
             trackId,
             type: "FINISH",
             positionMs: Math.floor((audio.duration || 0) * 1000)
@@ -260,9 +249,8 @@ async function loadRecommendations() {
   if (!container) return;
 
   try {
-    const userId = ensureUser();
     container.innerHTML = "Загрузка...";
-    const reco = await getRecommendations(userId, 20);
+    const reco = await getRecommendations(20);
 
     const items = reco?.items || [];
     container.innerHTML = items.length
@@ -278,8 +266,7 @@ async function loadRecommendations() {
 
 async function onPlay(trackId) {
   try {
-    const userId = ensureUser();
-    await sendInteraction({ userId, trackId, type: "PLAY" });
+    await sendInteraction({ trackId, type: "PLAY" });
     setStatus("Сохранено: PLAY " + trackId);
     await loadRecommendations();
   } catch (e) {
@@ -289,8 +276,7 @@ async function onPlay(trackId) {
 
 async function onFinish(trackId) {
   try {
-    const userId = ensureUser();
-    await sendInteraction({ userId, trackId, type: "FINISH" });
+    await sendInteraction({ trackId, type: "FINISH" });
     setStatus("Сохранено: FINISH " + trackId);
     await loadRecommendations();
   } catch (e) {
@@ -300,9 +286,8 @@ async function onFinish(trackId) {
 
 async function onLike(trackId) {
   try {
-    const userId = ensureUser();
-    await rate({ userId, trackId, value: 1 });
-    await sendInteraction({ userId, trackId, type: "LIKE" });
+    await rate({ trackId, value: 1 });
+    await sendInteraction({ trackId, type: "LIKE" });
     setStatus("Сохранено: LIKE " + trackId);
     await loadRecommendations();
   } catch (e) {
@@ -312,9 +297,8 @@ async function onLike(trackId) {
 
 async function onDislike(trackId) {
   try {
-    const userId = ensureUser();
-    await rate({ userId, trackId, value: -1 });
-    await sendInteraction({ userId, trackId, type: "DISLIKE" });
+    await rate({ trackId, value: -1 });
+    await sendInteraction({ trackId, type: "DISLIKE" });
     setStatus("Сохранено: DISLIKE " + trackId);
     await loadRecommendations();
   } catch (e) {
@@ -330,7 +314,7 @@ async function logout() {
       });
     }
   } catch (_) {
-    // Даже если logout на сервере не удался, локально всё равно очищаем сессию
+    // ignore
   } finally {
     clearSessionAndRedirect();
   }
@@ -360,6 +344,11 @@ window.logout = logout;
     const loadRecoBtn = document.getElementById("loadRecoBtn");
     if (loadRecoBtn) {
       loadRecoBtn.addEventListener("click", loadRecommendations);
+    }
+
+    const welcome = document.getElementById("welcomeText");
+    if (welcome) {
+      welcome.textContent = `Вы вошли как ${me.displayName} (${me.email})`;
     }
 
     await loadCatalog();

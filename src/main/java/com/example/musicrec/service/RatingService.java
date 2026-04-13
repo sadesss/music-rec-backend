@@ -12,6 +12,8 @@ import com.example.musicrec.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class RatingService {
@@ -20,11 +22,12 @@ public class RatingService {
     private final UserRepository userRepository;
     private final TrackRepository trackRepository;
 
-    public Rating upsert(UpsertRatingRequest req) {
+    public Rating upsertForUser(UUID userId, UpsertRatingRequest req) {
         validateValue(req.getValue());
 
-        User user = userRepository.findById(req.getUserId())
-                .orElseThrow(() -> new NotFoundException("User not found: " + req.getUserId()));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found: " + userId));
+
         Track track = trackRepository.findById(req.getTrackId())
                 .orElseThrow(() -> new NotFoundException("Track not found: " + req.getTrackId()));
 
@@ -37,7 +40,9 @@ public class RatingService {
     }
 
     private void validateValue(Integer v) {
-        if (v == null) throw new BadRequestException("Rating value is required");
+        if (v == null) {
+            throw new BadRequestException("Rating value is required");
+        }
         if (v < -1 || v > 5) {
             throw new BadRequestException("Rating value must be in [-1..5]. Got: " + v);
         }

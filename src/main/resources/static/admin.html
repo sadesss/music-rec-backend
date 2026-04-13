@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MusicRec Admin</title>
+    <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body class="app-body">
+<div class="app-shell">
+    <section class="hero-bar">
+        <div>
+            <div class="hero-pill">MusicRec</div>
+            <h1 class="hero-title">Панель администратора</h1>
+            <p class="hero-subtitle">
+                Загрузка треков и управление каталогом.
+            </p>
+        </div>
+    </section>
+
+    <section class="glass-card" style="padding: 24px; margin-bottom: 20px;">
+        <h2>Загрузка трека</h2>
+
+        <form id="uploadForm" style="display:grid; gap:12px;">
+            <input id="file" type="file" accept=".mp3,audio/mpeg" required />
+            <input id="title" class="form-control-dark" placeholder="Название" required />
+            <input id="artist" class="form-control-dark" placeholder="Исполнитель" />
+            <input id="album" class="form-control-dark" placeholder="Альбом" />
+            <input id="genre" class="form-control-dark" placeholder="Жанр" />
+            <input id="durationSeconds" class="form-control-dark" type="number" placeholder="Длительность, сек" />
+            <textarea id="metadataText" class="form-control-dark" placeholder="Доп. метаданные"></textarea>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button type="submit" class="btn-soft">Загрузить</button>
+                <button type="button" id="refreshBtn" class="btn-soft">Обновить список</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="glass-card" style="padding: 24px; margin-bottom: 20px;">
+        <div class="status-label">Статус</div>
+        <div id="status" class="status-value">Готово</div>
+    </section>
+
+    <section class="glass-card" style="padding: 24px;">
+        <h2>Треки</h2>
+        <div id="tracks">Загрузка...</div>
+    </section>
+</div>
+
+<script src="/js/admin-demo.js"></script>
+</body>
+</html>

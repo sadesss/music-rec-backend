@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MusicRec Player</title>
+    <link rel="stylesheet" href="/css/app.css" />
+    <style>
+        .page-grid {
+            display: grid;
+            grid-template-columns: 340px 1fr 380px;
+            gap: 20px;
+        }
+
+        .panel-pad {
+            padding: 24px;
+        }
+
+        .panel-gap {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .detail-grid {
+            display: grid;
+            gap: 10px;
+        }
+
+        .detail-item {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .detail-key {
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .detail-value {
+            color: var(--text);
+            word-break: break-word;
+        }
+
+        .empty-state-small {
+            color: var(--muted);
+            padding: 10px 0;
+        }
+
+        .top-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .spacer {
+            margin-top: 8px;
+        }
+
+        @media (max-width: 1180px) {
+            .page-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="app-body">
+<div class="app-shell">
+    <section class="hero-bar">
+        <div>
+            <div class="hero-pill">MusicRec</div>
+            <h1 class="hero-title">Пользовательский плеер</h1>
+            <p class="hero-subtitle">
+                Прослушивание треков, фиксация взаимодействий и персональные рекомендации.
+            </p>
+        </div>
+
+        <div class="top-actions">
+            <div class="status-block">
+                <div class="status-label">Пользователь</div>
+                <div class="status-value" id="currentUserName">Загрузка...</div>
+            </div>
+
+            <div class="status-block">
+                <div class="status-label">Статус</div>
+                <div class="status-value" id="playerStatus">Готово</div>
+            </div>
+
+            <button id="logoutBtn" class="btn-soft">Выйти</button>
+        </div>
+    </section>
+
+    <div class="page-grid">
+        <section class="glass-card panel-pad panel-gap">
+            <div class="section-header">
+                <h2>Каталог</h2>
+                <button id="reloadTracksBtn" class="btn-soft">Обновить</button>
+            </div>
+
+            <input id="trackSearch" class="form-control-dark" placeholder="Поиск по названию, исполнителю, альбому" />
+
+            <div id="tracksList" class="stack-list compact-list">
+                <div class="empty-state-small">Треки загружаются...</div>
+            </div>
+        </section>
+
+        <section class="glass-card panel-pad panel-gap">
+            <div class="section-header">
+                <h2>Плеер</h2>
+                <button id="loadRecommendationsBtn" class="btn-soft">Обновить рекомендации</button>
+            </div>
+
+            <div class="current-track-panel">
+                <div>
+                    <div class="track-title-lg" id="currentTrackTitle">Трек не выбран</div>
+                    <div class="track-meta-lg" id="currentTrackMeta">Выбери трек из каталога или рекомендаций</div>
+                </div>
+                <div class="track-art-placeholder">♪</div>
+            </div>
+
+            <audio id="audioPlayer" controls preload="none" style="width: 100%;"></audio>
+
+            <div class="control-row">
+                <button id="playBtn" class="btn-soft">Play</button>
+                <button id="pauseBtn" class="btn-soft">Pause</button>
+                <button id="skipBtn" class="btn-soft">Skip</button>
+                <button id="replayBtn" class="btn-soft">Replay</button>
+            </div>
+
+            <div class="rating-row">
+                <button data-rating="1" class="btn-soft btn-like">Мне нравится</button>
+                <button data-rating="-1" class="btn-soft btn-dislike">Мне не нравится</button>
+            </div>
+
+            <div class="spacer"></div>
+
+            <div id="trackDetails" class="detail-grid">
+                <div class="empty-state-small">Выбери трек, чтобы увидеть его свойства и признаки.</div>
+            </div>
+        </section>
+
+        <section class="glass-card panel-pad panel-gap">
+            <div class="section-header">
+                <h2>Рекомендации</h2>
+                <span class="section-badge">Top 20</span>
+            </div>
+
+            <div id="recommendationsList" class="stack-list">
+                <div class="empty-state-small">Рекомендации загружаются...</div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script src="/js/player.js"></script>
+</body>
+</html>

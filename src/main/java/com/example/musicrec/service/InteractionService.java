@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -21,9 +22,10 @@ public class InteractionService {
     private final UserRepository userRepository;
     private final TrackRepository trackRepository;
 
-    public Interaction create(CreateInteractionRequest req) {
-        User user = userRepository.findById(req.getUserId())
-                .orElseThrow(() -> new NotFoundException("User not found: " + req.getUserId()));
+    public Interaction createForUser(UUID userId, CreateInteractionRequest req) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found: " + userId));
+
         Track track = trackRepository.findById(req.getTrackId())
                 .orElseThrow(() -> new NotFoundException("Track not found: " + req.getTrackId()));
 
@@ -34,6 +36,7 @@ public class InteractionService {
         i.setEventTime(req.getEventTime() != null ? req.getEventTime() : Instant.now());
         i.setPositionMs(req.getPositionMs());
         i.setMetadataText(req.getMetadataText());
+
         return interactionRepository.save(i);
     }
 }
