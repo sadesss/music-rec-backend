@@ -1,14 +1,38 @@
+const SESSION_KEY = "musicrec_session";
+let session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+
 const admin$ = (id) => document.getElementById(id);
 
+function setAdminStatus(text) {
+    const el = admin$("adminStatus");
+    if (el) {
+        el.textContent = text;
+    }
+}
+
+function clearSessionAndRedirect() {
+    localStorage.removeItem(SESSION_KEY);
+    window.location.href = "/auth";
+}
+
 function logAdmin(message, isError = false) {
+    const container = admin$("adminLog");
+    if (!container) return;
+
     const row = document.createElement("div");
     row.className = `terminal-line ${isError ? "error" : "ok"}`;
     row.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-    admin$("adminLog").prepend(row);
+
+    if (container.children.length === 1 && container.textContent.trim() === "Лог пуст.") {
+        container.innerHTML = "";
+    }
+
+    container.prepend(row);
+    setAdminStatus(message);
 }
 
 function escapeHtml(str) {
-    return str
+    return String(str ?? "")
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
@@ -16,32 +40,79 @@ function escapeHtml(str) {
         .replaceAll("'", "&#039;");
 }
 
-async function apiGet(url) {
-    const r = await fetch(url);
-    if (!r.ok) {
-        throw new Error(`GET ${url} failed: ${r.status} ${await r.text()}`);
+async function authFetch(url, options = {}) {
+    const headers = {
+        ...(options.headers || {})
+    };
+
+    if (session?.sessionToken) {
+        headers["X-Session-Token"] = session.sessionToken;
     }
-    return r.json();
+
+    const response = await fetch(url, {
+        ...options,
+        headers
+    });
+
+    if (response.status === 401 || response.status === 403) {
+        clearSessionAndRedirect();
+        throw new Error("Сессия недействительна или доступ запрещён");
+    }
+
+    if (!response.ok) {
+        throw new Error(await response.text());
+    }
+
+    if (response.status === 204) {
+        return null;
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+        return response.json();
+    }
+
+    return response.text();
+}
+
+async function ensureAdmin() {
+    if (!session?.sessionToken) {
+        clearSessionAndRedirect();
+        throw new Error("Нет активной сессии");
+    }
+
+    const me = await authFetch("/api/v1/auth/me", { method: "GET" });
+
+    if (me.role !== "ADMIN") {
+        clearSessionAndRedirect();
+        throw new Error("Требуется роль ADMIN");
+    }
+
+    const nameEl = admin$("adminUserName");
+    if (nameEl) {
+        nameEl.textContent = `${me.displayName} (${me.email})`;
+    }
+
+    return me;
+}
+
+async function apiGet(url) {
+    return authFetch(url, { method: "GET" });
 }
 
 async function apiPostJson(url, body) {
-    const r = await fetch(url, {
+    return authFetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
     });
-
-    if (!r.ok) {
-        throw new Error(`POST ${url} failed: ${r.status} ${await r.text()}`);
-    }
-    return r.json();
 }
 
 async function importJamendo() {
     const body = {
         datasetRoot: admin$("datasetRoot").value.trim(),
         audioRoot: admin$("audioRoot").value.trim(),
-        limit: Number(admin$("importLimit").value)
+        limit: Number(admin$("importLimit").value || 100)
     };
 
     const response = await apiPostJson("/api/admin/v1/import/jamendo", body);
@@ -72,16 +143,11 @@ async function uploadTrack() {
     fd.append("file", file);
     fd.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
 
-    const r = await fetch("/api/admin/v1/tracks/upload", {
+    const response = await authFetch("/api/admin/v1/tracks/upload", {
         method: "POST",
         body: fd
     });
 
-    if (!r.ok) {
-        throw new Error(`Upload failed: ${r.status} ${await r.text()}`);
-    }
-
-    const response = await r.json();
     logAdmin(`Трек загружен: ${response.trackId}`);
     await loadTracks();
 }
@@ -92,12 +158,10 @@ async function analyzeTrack() {
         throw new Error("Укажи trackId для анализа");
     }
 
-    const r = await fetch(`/api/admin/v1/tracks/${encodeURIComponent(trackId)}/analyze`, { method: "POST" });
-    if (!r.ok) {
-        throw new Error(`Analyze failed: ${r.status} ${await r.text()}`);
-    }
+    const response = await authFetch(`/api/admin/v1/tracks/${encodeURIComponent(trackId)}/analyze`, {
+        method: "POST"
+    });
 
-    const response = await r.json();
     logAdmin(`Анализ завершён: features=${response.featuresUpserted}`);
 }
 
@@ -127,16 +191,20 @@ function renderMetrics(metricsResponse) {
                 <div class="detail-key">${escapeHtml(k)}</div>
                 <div class="detail-value">${escapeHtml(String(v))}</div>
             </div>
-        `).join("") || `<div class="empty-state-small">Метрики пока отсутствуют.</div>`}
+        `).join("") || `<div class="detail-item"><div class="detail-key">Состояние</div><div class="detail-value">Метрики пока отсутствуют.</div></div>`}
     `;
 }
 
 async function loadTracks() {
-    const tracks = await apiGet("/api/v1/tracks");
+    const tracks = await fetch("/api/v1/tracks").then(async r => {
+        if (!r.ok) throw new Error(await r.text());
+        return r.json();
+    });
+
     const list = admin$("adminTracksList");
 
     if (!tracks.length) {
-        list.innerHTML = `<div class="empty-state-small">Треков пока нет.</div>`;
+        list.innerHTML = `<div class="terminal-line">Треков пока нет.</div>`;
         return;
     }
 
@@ -144,9 +212,20 @@ async function loadTracks() {
         <div class="track-card static-track-card">
             <div class="track-card-title">${escapeHtml(track.title || "Без названия")}</div>
             <div class="track-card-meta">${escapeHtml(track.artist || "Неизвестный исполнитель")}</div>
+            <div class="track-card-submeta">${escapeHtml(track.album || "Без альбома")}</div>
             <div class="track-card-submeta">${escapeHtml(track.id)}</div>
         </div>
     `).join("");
+}
+
+async function logout() {
+    try {
+        await authFetch("/api/v1/auth/logout", { method: "POST" });
+    } catch (_) {
+        // ignore
+    } finally {
+        clearSessionAndRedirect();
+    }
 }
 
 function bindAdminEvents() {
@@ -198,13 +277,18 @@ function bindAdminEvents() {
             logAdmin(e.message, true);
         }
     });
+
+    admin$("logoutBtn").addEventListener("click", logout);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
     bindAdminEvents();
+
     try {
+        await ensureAdmin();
         await loadTracks();
         await loadMetrics();
+        logAdmin("Панель администратора инициализирована");
     } catch (e) {
         logAdmin(e.message, true);
     }

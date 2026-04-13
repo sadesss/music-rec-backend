@@ -18,6 +18,6 @@ public class PageController {
 
     @GetMapping("/admin")
     public String adminPage() {
-        return "forward:/admin";
+        return "forward:/admin.html";
     }
 }

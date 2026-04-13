@@ -28,7 +28,7 @@ public class SecurityConfig {
                         "/player",
                         "/player.html",
                         "/admin",
-                        "/admin",
+                        "/admin.html",
                         "/demo.html",
                         "/css/**",
                         "/js/**",

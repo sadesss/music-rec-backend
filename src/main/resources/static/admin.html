@@ -5,49 +5,239 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MusicRec Admin</title>
     <link rel="stylesheet" href="/css/app.css" />
+    <style>
+        .admin-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 22px;
+        }
+
+        .admin-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel-pad {
+            padding: 24px;
+        }
+
+        .form-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .detail-grid {
+            display: grid;
+            gap: 10px;
+        }
+
+        .detail-item {
+            display: grid;
+            grid-template-columns: 170px 1fr;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .detail-key {
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .detail-value {
+            color: var(--text);
+            word-break: break-word;
+        }
+
+        .terminal {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 320px;
+            overflow: auto;
+            padding-right: 4px;
+        }
+
+        .terminal-line {
+            padding: 10px 12px;
+            border-radius: 12px;
+            font-size: 0.92rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.04);
+        }
+
+        .terminal-line.ok {
+            border-color: rgba(53, 214, 120, 0.25);
+            background: rgba(53, 214, 120, 0.10);
+        }
+
+        .terminal-line.error {
+            border-color: rgba(255, 90, 90, 0.30);
+            background: rgba(255, 90, 90, 0.10);
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .admin-top {
+            display: flex;
+            gap: 14px;
+            align-items: stretch;
+            flex-wrap: wrap;
+        }
+
+        .admin-top .status-block {
+            min-width: 240px;
+        }
+
+        .full-width {
+            width: 100%;
+        }
+
+        textarea.form-control-dark {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        @media (max-width: 1200px) {
+            .admin-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body class="app-body">
 <div class="app-shell">
-    <section class="hero-bar">
+    <section class="hero-bar admin-hero">
         <div>
             <div class="hero-pill">MusicRec</div>
             <h1 class="hero-title">Панель администратора</h1>
             <p class="hero-subtitle">
-                Загрузка треков и управление каталогом.
+                Импорт каталога, загрузка треков, анализ признаков, обучение модели и просмотр метрик.
             </p>
+        </div>
+
+        <div class="admin-top">
+            <div class="status-block">
+                <div class="status-label">Администратор</div>
+                <div class="status-value" id="adminUserName">Загрузка...</div>
+            </div>
+
+            <div class="status-block">
+                <div class="status-label">Статус</div>
+                <div class="status-value" id="adminStatus">Готово</div>
+            </div>
+
+            <button id="logoutBtn" class="btn-soft">Выйти</button>
         </div>
     </section>
 
-    <section class="glass-card" style="padding: 24px; margin-bottom: 20px;">
-        <h2>Загрузка трека</h2>
+    <div class="admin-grid">
+        <div class="admin-stack">
+            <section class="glass-card panel-pad">
+                <div class="section-header">
+                    <h2>Импорт Jamendo</h2>
+                    <span class="section-badge">Bulk import</span>
+                </div>
 
-        <form id="uploadForm" style="display:grid; gap:12px;">
-            <input id="file" type="file" accept=".mp3,audio/mpeg" required />
-            <input id="title" class="form-control-dark" placeholder="Название" required />
-            <input id="artist" class="form-control-dark" placeholder="Исполнитель" />
-            <input id="album" class="form-control-dark" placeholder="Альбом" />
-            <input id="genre" class="form-control-dark" placeholder="Жанр" />
-            <input id="durationSeconds" class="form-control-dark" type="number" placeholder="Длительность, сек" />
-            <textarea id="metadataText" class="form-control-dark" placeholder="Доп. метаданные"></textarea>
+                <div class="form-grid" style="margin-top: 16px;">
+                    <input id="datasetRoot" class="form-control-dark" placeholder="Путь к datasetRoot" />
+                    <input id="audioRoot" class="form-control-dark" placeholder="Путь к audioRoot" />
+                    <input id="importLimit" class="form-control-dark" type="number" value="100" min="1" />
+                    <div class="admin-actions">
+                        <button id="importJamendoBtn" class="btn-soft">Запустить импорт</button>
+                    </div>
+                </div>
+            </section>
 
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button type="submit" class="btn-soft">Загрузить</button>
-                <button type="button" id="refreshBtn" class="btn-soft">Обновить список</button>
-            </div>
-        </form>
-    </section>
+            <section class="glass-card panel-pad">
+                <div class="section-header">
+                    <h2>Загрузка трека</h2>
+                    <span class="section-badge">Upload</span>
+                </div>
 
-    <section class="glass-card" style="padding: 24px; margin-bottom: 20px;">
-        <div class="status-label">Статус</div>
-        <div id="status" class="status-value">Готово</div>
-    </section>
+                <div class="form-grid" style="margin-top: 16px;">
+                    <input id="trackFile" type="file" accept=".mp3,audio/mpeg" class="form-control-dark" />
+                    <input id="trackTitle" class="form-control-dark" placeholder="Название" />
+                    <input id="trackArtist" class="form-control-dark" placeholder="Исполнитель" />
+                    <input id="trackAlbum" class="form-control-dark" placeholder="Альбом" />
+                    <input id="trackGenre" class="form-control-dark" placeholder="Жанр" />
+                    <input id="trackDuration" class="form-control-dark" type="number" min="1" placeholder="Длительность, сек" />
 
-    <section class="glass-card" style="padding: 24px;">
-        <h2>Треки</h2>
-        <div id="tracks">Загрузка...</div>
-    </section>
+                    <div class="admin-actions">
+                        <button id="uploadTrackBtn" class="btn-soft">Загрузить трек</button>
+                        <button id="loadTracksBtn" class="btn-soft">Обновить каталог</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="glass-card panel-pad">
+                <div class="section-header">
+                    <h2>Анализ и обучение</h2>
+                    <span class="section-badge">ML</span>
+                </div>
+
+                <div class="form-grid" style="margin-top: 16px;">
+                    <input id="analyzeTrackId" class="form-control-dark" placeholder="trackId для анализа" />
+                    <div class="admin-actions">
+                        <button id="analyzeTrackBtn" class="btn-soft">Анализировать трек</button>
+                    </div>
+
+                    <textarea id="trainNotes" class="form-control-dark" placeholder="Комментарий к запуску обучения"></textarea>
+                    <div class="admin-actions">
+                        <button id="trainModelBtn" class="btn-soft">Запустить обучение</button>
+                        <button id="loadMetricsBtn" class="btn-soft">Обновить метрики</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="glass-card panel-pad">
+                <div class="section-header">
+                    <h2>Лог операций</h2>
+                    <span class="section-badge">Live</span>
+                </div>
+
+                <div id="adminLog" class="terminal" style="margin-top: 16px;">
+                    <div class="terminal-line">Лог пуст.</div>
+                </div>
+            </section>
+        </div>
+
+        <div class="admin-stack">
+            <section class="glass-card panel-pad">
+                <div class="section-header">
+                    <h2>Метрики модели</h2>
+                    <span class="section-badge">Metrics</span>
+                </div>
+
+                <div id="metricsPanel" class="detail-grid" style="margin-top: 16px;">
+                    <div class="detail-item">
+                        <div class="detail-key">Состояние</div>
+                        <div class="detail-value">Метрики ещё не загружены.</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="glass-card panel-pad">
+                <div class="section-header">
+                    <h2>Каталог треков</h2>
+                    <span class="section-badge">Tracks</span>
+                </div>
+
+                <div id="adminTracksList" class="stack-list" style="margin-top: 16px;">
+                    <div class="terminal-line">Каталог загружается...</div>
+                </div>
+            </section>
+        </div>
+    </div>
 </div>
 
-<script src="/js/admin-demo.js"></script>
+<script src="/js/admin.js"></script>
 </body>
 </html>
