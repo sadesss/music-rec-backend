@@ -205,6 +205,21 @@ async function sendInteraction(type) {
         setStatus(`Ошибка interaction: ${e.message}`);
     }
 }
+document.querySelectorAll("[data-rating]").forEach(btn => {
+    btn.addEventListener("click", () => sendRating(Number(btn.dataset.rating)));
+});
+
+$("likeBtn").addEventListener("click", async () => {
+    await sendRating(5);
+    await sendInteraction("LIKE");
+    await loadRecommendations();
+});
+
+$("dislikeBtn").addEventListener("click", async () => {
+    await sendRating(1);
+    await sendInteraction("DISLIKE");
+    await loadRecommendations();
+});
 
 async function sendRating(value) {
     if (!state.currentTrack) {
@@ -223,7 +238,6 @@ async function sendRating(value) {
         });
 
         setStatus(`Оценка ${value} сохранена`);
-        await loadRecommendations();
     } catch (e) {
         setStatus(`Ошибка rating: ${e.message}`);
     }
@@ -236,7 +250,7 @@ async function loadRecommendations() {
         });
 
         renderRecommendations(response.items || []);
-        setStatus("Рекомендации обновлены");
+        setStatus(`Рекомендации загружены: ${response.items?.length ?? 0}`);
     } catch (e) {
         setStatus(`Ошибка рекомендаций: ${e.message}`);
     }

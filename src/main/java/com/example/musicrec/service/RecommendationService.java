@@ -36,68 +36,162 @@ public class RecommendationService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found: " + userId));
 
-        // 1) Если есть заранее импортированные рекомендации — используем их
-        List<Recommendation> stored = recommendationRepository.findTop50ByUserIdOrderByScoreDesc(userId);
-        if (!stored.isEmpty()) {
-            List<RecommendationItemResponse> items = stored.stream()
-                    .limit(limit)
-                    .map(r -> RecommendationItemResponse.builder()
-                            .trackId(r.getTrack().getId())
-                            .title(r.getTrack().getTitle())
-                            .artist(r.getTrack().getArtist())
-                            .album(r.getTrack().getAlbum())
-                            .originalGenre(r.getTrack().getOriginalGenre())
-                            .audioUrl("/api/v1/tracks/" + r.getTrack().getId() + "/stream")
-                            .score(r.getScore())
-                            .rank(r.getRank())
-                            .modelVersion(r.getModelVersion())
-                            .reason("precomputed")
-                            .build())
-                    .toList();
-
-            return RecommendationResponse.builder()
-                    .userId(userId)
-                    .items(items)
-                    .build();
-        }
-
-        // 2) Иначе считаем online-рекомендации из истории пользователя
         List<Rating> ratings = ratingRepository.findByUserId(userId);
         List<Interaction> interactions = interactionRepository.findByUserIdOrderByEventTimeDesc(userId);
 
-        Map<UUID, Integer> explicitRatings = ratings.stream()
-                .collect(Collectors.toMap(r -> r.getTrack().getId(), Rating::getValue, (a, b) -> b));
+        Set<UUID> seenTrackIds = collectSeenTrackIds(ratings, interactions);
+        Set<UUID> dislikedTrackIds = collectDislikedTrackIds(ratings, interactions);
 
-        Set<UUID> dislikedTrackIds = ratings.stream()
-                .filter(r -> r.getValue() < 0)
-                .map(r -> r.getTrack().getId())
-                .collect(Collectors.toSet());
+        boolean hasAnyFeedback = !ratings.isEmpty() || !interactions.isEmpty();
+        boolean hasNegativeSignal = hasNegativeSignal(ratings, interactions);
 
+        // 1) Совсем новый пользователь -> precomputed / fallback
+        if (!hasAnyFeedback) {
+            List<RecommendationItemResponse> items = buildStoredRecommendations(userId, limit, seenTrackIds, dislikedTrackIds);
+            return RecommendationResponse.builder()
+                    .userId(userId)
+                    .items(withRanks(items))
+                    .build();
+        }
+
+        // 2) Только позитивные сигналы -> НЕ пересчитываем весь список,
+        //    а берём precomputed и просто убираем уже seen/disliked
+        if (!hasNegativeSignal) {
+            List<RecommendationItemResponse> items = buildStoredRecommendations(userId, limit, seenTrackIds, dislikedTrackIds);
+            return RecommendationResponse.builder()
+                    .userId(userId)
+                    .items(withRanks(items))
+                    .build();
+        }
+
+        // 3) Есть негативный сигнал -> полный online-пересчёт
+        List<RecommendationItemResponse> items = buildOnlineRecommendations(userId, limit, ratings, interactions, seenTrackIds, dislikedTrackIds);
+
+        return RecommendationResponse.builder()
+                .userId(userId)
+                .items(withRanks(items))
+                .build();
+    }
+
+    private boolean hasNegativeSignal(List<Rating> ratings, List<Interaction> interactions) {
+        boolean negativeRatings = ratings.stream()
+                .anyMatch(r -> r.getValue() != null && r.getValue() <= 2);
+
+        boolean negativeInteractions = interactions.stream()
+                .anyMatch(i -> i.getType() == com.example.musicrec.domain.enums.InteractionType.DISLIKE
+                        || i.getType() == com.example.musicrec.domain.enums.InteractionType.SKIP);
+
+        return negativeRatings || negativeInteractions;
+    }
+
+    private Set<UUID> collectSeenTrackIds(List<Rating> ratings, List<Interaction> interactions) {
         Set<UUID> seenTrackIds = new HashSet<>();
-        interactions.forEach(i -> seenTrackIds.add(i.getTrack().getId()));
-        ratings.forEach(r -> seenTrackIds.add(r.getTrack().getId()));
 
-        Map<UUID, Double> positiveTrackWeights = new HashMap<>();
+        for (Interaction i : interactions) {
+            if (i.getTrack() != null && i.getTrack().getId() != null) {
+                seenTrackIds.add(i.getTrack().getId());
+            }
+        }
 
         for (Rating r : ratings) {
-            if (r.getValue() > 0) {
-                positiveTrackWeights.merge(r.getTrack().getId(), 2.0 + r.getValue(), Double::sum);
+            if (r.getTrack() != null && r.getTrack().getId() != null) {
+                seenTrackIds.add(r.getTrack().getId());
+            }
+        }
+
+        return seenTrackIds;
+    }
+
+    private Set<UUID> collectDislikedTrackIds(List<Rating> ratings, List<Interaction> interactions) {
+        Set<UUID> dislikedTrackIds = new HashSet<>();
+
+        for (Rating r : ratings) {
+            if (r.getTrack() != null && r.getTrack().getId() != null && r.getValue() != null && r.getValue() <= 2) {
+                dislikedTrackIds.add(r.getTrack().getId());
             }
         }
 
         for (Interaction i : interactions) {
+            if (i.getTrack() != null && i.getTrack().getId() != null) {
+                if (i.getType() == com.example.musicrec.domain.enums.InteractionType.DISLIKE) {
+                    dislikedTrackIds.add(i.getTrack().getId());
+                }
+            }
+        }
+
+        return dislikedTrackIds;
+    }
+
+    private List<RecommendationItemResponse> buildStoredRecommendations(
+            UUID userId,
+            int limit,
+            Set<UUID> seenTrackIds,
+            Set<UUID> dislikedTrackIds
+    ) {
+        List<Recommendation> stored = recommendationRepository.findTop50ByUserIdOrderByScoreDesc(userId);
+
+        List<RecommendationItemResponse> items = stored.stream()
+                .map(r -> RecommendationItemResponse.builder()
+                        .trackId(r.getTrack().getId())
+                        .title(r.getTrack().getTitle())
+                        .artist(r.getTrack().getArtist())
+                        .album(r.getTrack().getAlbum())
+                        .originalGenre(r.getTrack().getOriginalGenre())
+                        .audioUrl("/api/v1/tracks/" + r.getTrack().getId() + "/stream")
+                        .score(r.getScore())
+                        .modelVersion(r.getModelVersion())
+                        .reason("precomputed")
+                        .build())
+                .filter(item -> !seenTrackIds.contains(item.getTrackId()))
+                .filter(item -> !dislikedTrackIds.contains(item.getTrackId()))
+                .limit(limit)
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        fillWithFallback(items, seenTrackIds, dislikedTrackIds, limit, "precomputed-fallback");
+
+        return items.stream().limit(limit).toList();
+    }
+
+    private List<RecommendationItemResponse> buildOnlineRecommendations(
+            UUID userId,
+            int limit,
+            List<Rating> ratings,
+            List<Interaction> interactions,
+            Set<UUID> seenTrackIds,
+            Set<UUID> dislikedTrackIds
+    ) {
+        Map<UUID, Double> positiveTrackWeights = new HashMap<>();
+
+        // Явные оценки: используем шкалу 1..5
+        for (Rating r : ratings) {
+            if (r.getTrack() == null || r.getTrack().getId() == null || r.getValue() == null) {
+                continue;
+            }
+
+            double w = ratingWeight(r.getValue());
+            positiveTrackWeights.merge(r.getTrack().getId(), w, Double::sum);
+        }
+
+        // Неявные взаимодействия
+        for (Interaction i : interactions) {
+            if (i.getTrack() == null || i.getTrack().getId() == null) {
+                continue;
+            }
+
             double w = switch (i.getType()) {
-                case PLAY -> 1.0;
-                case PAUSE -> 0.2;
-                case SKIP -> -1.0;
-                case FINISH -> 2.0;
-                case LIKE -> 3.0;
-                case DISLIKE -> -3.0;
+                case PLAY -> 0.6;
+                case PAUSE -> 0.1;
+                case SKIP -> -1.5;
+                case FINISH -> 1.8;
+                case LIKE -> 0.0;     // LIKE = 5 уже приходит как rating, второй раз не усиливаем
+                case DISLIKE -> 0.0;  // DISLIKE = 1 уже приходит как rating, второй раз не усиливаем
             };
+
             positiveTrackWeights.merge(i.getTrack().getId(), w, Double::sum);
         }
 
         List<Track> allTracks = trackRepository.findAll();
+
         Map<UUID, Track> trackById = allTracks.stream()
                 .collect(Collectors.toMap(Track::getId, Function.identity()));
 
@@ -116,19 +210,17 @@ public class RecommendationService {
             double w = positiveTrackWeights.getOrDefault(tid, 0.0);
 
             if (t.getArtist() != null && !t.getArtist().isBlank()) {
-                artistPref.merge(t.getArtist().trim().toLowerCase(), w, Double::sum);
+                artistPref.merge(norm(t.getArtist()), w, Double::sum);
             }
             if (t.getOriginalGenre() != null && !t.getOriginalGenre().isBlank()) {
-                genrePref.merge(t.getOriginalGenre().trim().toLowerCase(), w, Double::sum);
+                genrePref.merge(norm(t.getOriginalGenre()), w, Double::sum);
             }
             if (t.getAlbum() != null && !t.getAlbum().isBlank()) {
-                albumPref.merge(t.getAlbum().trim().toLowerCase(), w, Double::sum);
+                albumPref.merge(norm(t.getAlbum()), w, Double::sum);
             }
         }
 
         Map<UUID, Map<String, Double>> featuresByTrack = loadNumericFeatures(allTracks);
-
-        // Профиль пользователя по audio features
         Map<String, Double> profile = buildUserFeatureProfile(positiveTrackIds, positiveTrackWeights, featuresByTrack);
 
         List<ScoredTrack> scored = new ArrayList<>();
@@ -136,11 +228,14 @@ public class RecommendationService {
         for (Track candidate : allTracks) {
             UUID candidateId = candidate.getId();
 
+            if (candidateId == null) {
+                continue;
+            }
+
             if (dislikedTrackIds.contains(candidateId)) {
                 continue;
             }
 
-            // для demo лучше не рекомендовать уже оцененные/прослушанные
             if (seenTrackIds.contains(candidateId)) {
                 continue;
             }
@@ -170,37 +265,17 @@ public class RecommendationService {
             }
 
             long playPopularity = interactionRepository.countByTrackId(candidateId);
-            long ratingPopularity = ratingRepository.countByTrackIdAndValueGreaterThan(candidateId, 0);
+            long ratingPopularity = ratingRepository.countByTrackIdAndValueGreaterThan(candidateId, 3);
             double popularityScore = Math.log1p(playPopularity) * 0.15 + Math.log1p(ratingPopularity) * 0.35;
             score += popularityScore;
 
             if (score > 0) {
-                scored.add(new ScoredTrack(candidate, score, reasons.isEmpty() ? "popular" : String.join(", ", reasons)));
+                scored.add(new ScoredTrack(
+                        candidate,
+                        score,
+                        reasons.isEmpty() ? "popular" : String.join(", ", reasons)
+                ));
             }
-        }
-
-        if (scored.isEmpty()) {
-            // Совсем cold start — просто latest unseen
-            List<RecommendationItemResponse> items = trackRepository.findTop50ByOrderByCreatedAtDesc().stream()
-                    .filter(t -> !seenTrackIds.contains(t.getId()))
-                    .limit(limit)
-                    .map(t -> RecommendationItemResponse.builder()
-                            .trackId(t.getId())
-                            .title(t.getTitle())
-                            .artist(t.getArtist())
-                            .album(t.getAlbum())
-                            .originalGenre(t.getOriginalGenre())
-                            .audioUrl("/api/v1/tracks/" + t.getId() + "/stream")
-                            .score(0.1)
-                            .modelVersion("online-fallback-v1")
-                            .reason("latest")
-                            .build())
-                    .toList();
-
-            return RecommendationResponse.builder()
-                    .userId(userId)
-                    .items(withRanks(items))
-                    .build();
         }
 
         List<RecommendationItemResponse> items = scored.stream()
@@ -214,19 +289,57 @@ public class RecommendationService {
                         .originalGenre(s.track().getOriginalGenre())
                         .audioUrl("/api/v1/tracks/" + s.track().getId() + "/stream")
                         .score(s.score())
-                        .modelVersion("online-content-cf-v1")
+                        .modelVersion("online-content-cf-v2")
                         .reason(s.reason())
                         .build())
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        fillWithFallback(items, seenTrackIds, dislikedTrackIds, limit, "online-fallback");
+
+        return items.stream().limit(limit).toList();
+    }
+
+    private void fillWithFallback(
+            List<RecommendationItemResponse> items,
+            Set<UUID> seenTrackIds,
+            Set<UUID> dislikedTrackIds,
+            int limit,
+            String modelVersion
+    ) {
+        if (items.size() >= limit) {
+            return;
+        }
+
+        Set<UUID> alreadyAdded = items.stream()
+                .map(RecommendationItemResponse::getTrackId)
+                .collect(Collectors.toSet());
+
+        List<Track> fallbackTracks = trackRepository.findTop50ByOrderByCreatedAtDesc().stream()
+                .filter(t -> t.getId() != null)
+                .filter(t -> !seenTrackIds.contains(t.getId()))
+                .filter(t -> !dislikedTrackIds.contains(t.getId()))
+                .filter(t -> !alreadyAdded.contains(t.getId()))
+                .limit(limit - items.size())
                 .toList();
 
-        return RecommendationResponse.builder()
-                .userId(userId)
-                .items(withRanks(items))
-                .build();
+        for (Track t : fallbackTracks) {
+            items.add(RecommendationItemResponse.builder()
+                    .trackId(t.getId())
+                    .title(t.getTitle())
+                    .artist(t.getArtist())
+                    .album(t.getAlbum())
+                    .originalGenre(t.getOriginalGenre())
+                    .audioUrl("/api/v1/tracks/" + t.getId() + "/stream")
+                    .score(0.1)
+                    .modelVersion(modelVersion)
+                    .reason("latest")
+                    .build());
+        }
     }
 
     private List<RecommendationItemResponse> withRanks(List<RecommendationItemResponse> items) {
         List<RecommendationItemResponse> out = new ArrayList<>();
+
         for (int i = 0; i < items.size(); i++) {
             RecommendationItemResponse item = items.get(i);
             out.add(RecommendationItemResponse.builder()
@@ -242,7 +355,19 @@ public class RecommendationService {
                     .reason(item.getReason())
                     .build());
         }
+
         return out;
+    }
+
+    private double ratingWeight(int value) {
+        return switch (value) {
+            case 1 -> -3.0;
+            case 2 -> -1.5;
+            case 3 -> 0.0;
+            case 4 -> 1.5;
+            case 5 -> 3.0;
+            default -> 0.0;
+        };
     }
 
     private Map<UUID, Map<String, Double>> loadNumericFeatures(List<Track> tracks) {
@@ -302,9 +427,19 @@ public class RecommendationService {
 
         double sum = 0.0;
         int cnt = 0;
-        if (tempo >= 0) { sum += tempo; cnt++; }
-        if (rms >= 0) { sum += rms; cnt++; }
-        if (centroid >= 0) { sum += centroid; cnt++; }
+
+        if (tempo >= 0) {
+            sum += tempo;
+            cnt++;
+        }
+        if (rms >= 0) {
+            sum += rms;
+            cnt++;
+        }
+        if (centroid >= 0) {
+            sum += centroid;
+            cnt++;
+        }
 
         return cnt == 0 ? 0.0 : sum / cnt;
     }
@@ -319,5 +454,6 @@ public class RecommendationService {
         return s == null || s.isBlank() ? null : s.trim().toLowerCase();
     }
 
-    private record ScoredTrack(Track track, double score, String reason) {}
+    private record ScoredTrack(Track track, double score, String reason) {
+    }
 }

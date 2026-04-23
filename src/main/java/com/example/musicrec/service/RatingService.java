@@ -43,11 +43,8 @@ public class RatingService {
         if (v == null) {
             throw new BadRequestException("Rating value is required");
         }
-        if (v < -1 || v > 5) {
-            throw new BadRequestException("Rating value must be in [-1..5]. Got: " + v);
-        }
-        if (v == 0) {
-            throw new BadRequestException("Rating value cannot be 0 (use -1 dislike or 1 like, or 1..5 stars)");
+        if (v < 1 || v > 5) {
+            throw new BadRequestException("Rating value must be in [1..5]. Got: " + v);
         }
     }
 }
