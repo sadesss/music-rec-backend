@@ -110,11 +110,14 @@ body.app-body {
 }
 
 .form-control-dark {
+    width: 100%;
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.09);
     color: var(--text);
     border-radius: 14px;
     min-height: 46px;
+    padding: 10px 13px;
+    outline: none;
 }
 
 .form-control-dark:focus {
@@ -132,6 +135,22 @@ body.app-body {
     border-radius: 14px;
     padding: 10px 16px;
     font-weight: 600;
+    color: #f4f8ff;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    cursor: pointer;
+    transition: transform .18s ease, border-color .18s ease, background .18s ease;
+}
+
+.btn-soft:hover {
+    transform: translateY(-1px);
+    background: rgba(124, 92, 255, 0.18);
+    border-color: rgba(124, 92, 255, 0.40);
+}
+
+.btn-soft:disabled {
+    cursor: progress;
+    opacity: .65;
 }
 
 .btn-primary.btn-soft {

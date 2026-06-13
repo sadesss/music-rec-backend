@@ -49,6 +49,48 @@ public class AdminController {
                 .build();
     }
 
+
+    @GetMapping("/model/settings")
+    public ModelSettingsResponse getModelSettings() {
+        var res = adminService.getModelSettings();
+        return ModelSettingsResponse.builder()
+                .settings(res.settings())
+                .updatedAt(res.updatedAt())
+                .message("Current demonstration model settings")
+                .build();
+    }
+
+    @PostMapping("/model/settings")
+    public ModelSettingsResponse saveModelSettings(@RequestBody(required = false) ModelSettingsRequest req) {
+        var res = adminService.saveModelSettings(req == null ? null : req.getSettings());
+        return ModelSettingsResponse.builder()
+                .settings(res.settings())
+                .updatedAt(res.updatedAt())
+                .message("Model settings saved")
+                .build();
+    }
+
+    @PostMapping("/train/mock")
+    public TrainResponse trainMock(@RequestBody(required = false) TrainRequest req) {
+        String notes = req == null ? "" : req.getNotes();
+        var res = adminService.trainModelMock(notes, req == null ? null : req.getSettings());
+        return TrainResponse.builder()
+                .modelVersion(res.modelVersion())
+                .metrics(res.metrics())
+                .metricsJsonPath(res.metricsJsonPath())
+                .build();
+    }
+
+    @PostMapping("/metrics/calculate")
+    public MetricsResponse calculateMetrics(@RequestBody(required = false) ModelSettingsRequest req) {
+        var res = adminService.calculateMockMetrics(req == null ? null : req.getSettings());
+        return MetricsResponse.builder()
+                .modelVersion(res.modelVersion())
+                .metrics(res.metrics())
+                .metricsJsonPath(res.metricsJsonPath())
+                .build();
+    }
+
     @PostMapping("/train")
     public TrainResponse train(@RequestBody(required = false) TrainRequest req) {
         String notes = req == null ? "" : req.getNotes();
