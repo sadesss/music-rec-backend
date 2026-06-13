@@ -162,7 +162,7 @@ public class RecommendationService {
     ) {
         Map<UUID, Double> positiveTrackWeights = new HashMap<>();
 
-        // Явные оценки: используем шкалу 1..5
+        // Явные оценки: используем шкалу 1..10
         for (Rating r : ratings) {
             if (r.getTrack() == null || r.getTrack().getId() == null || r.getValue() == null) {
                 continue;
@@ -183,7 +183,7 @@ public class RecommendationService {
                 case PAUSE -> 0.1;
                 case SKIP -> -1.5;
                 case FINISH -> 1.8;
-                case LIKE -> 0.0;     // LIKE = 5 уже приходит как rating, второй раз не усиливаем
+                case LIKE -> 0.0;     // LIKE = 10 уже приходит как rating, второй раз не усиливаем
                 case DISLIKE -> 0.0;  // DISLIKE = 1 уже приходит как rating, второй раз не усиливаем
             };
 
@@ -265,7 +265,7 @@ public class RecommendationService {
             }
 
             long playPopularity = interactionRepository.countByTrackId(candidateId);
-            long ratingPopularity = ratingRepository.countByTrackIdAndValueGreaterThan(candidateId, 3);
+            long ratingPopularity = ratingRepository.countByTrackIdAndValueGreaterThan(candidateId, 7);
             double popularityScore = Math.log1p(playPopularity) * 0.15 + Math.log1p(ratingPopularity) * 0.35;
             score += popularityScore;
 
@@ -361,11 +361,16 @@ public class RecommendationService {
 
     private double ratingWeight(int value) {
         return switch (value) {
-            case 1 -> -3.0;
-            case 2 -> -1.5;
-            case 3 -> 0.0;
-            case 4 -> 1.5;
-            case 5 -> 3.0;
+            case 1 -> -4.5;
+            case 2 -> -3.5;
+            case 3 -> -2.5;
+            case 4 -> -1.5;
+            case 5 -> -0.5;
+            case 6 -> 0.5;
+            case 7 -> 1.5;
+            case 8 -> 2.5;
+            case 9 -> 3.5;
+            case 10 -> 4.5;
             default -> 0.0;
         };
     }

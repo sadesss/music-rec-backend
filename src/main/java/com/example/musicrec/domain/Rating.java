@@ -22,7 +22,7 @@ public class Rating extends BaseEntity {
     private Track track;
 
     /**
-     * Assumption: value can encode like/dislike (-1/1) or star rating (1..5).
+     * Rating value on a 10-point scale (1..10).
      * Validation is implemented in RatingService.
      */
     @Column(nullable = false)

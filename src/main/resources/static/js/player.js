@@ -206,11 +206,14 @@ async function sendInteraction(type) {
     }
 }
 document.querySelectorAll("[data-rating]").forEach(btn => {
-    btn.addEventListener("click", () => sendRating(Number(btn.dataset.rating)));
+    btn.addEventListener("click", async () => {
+        await sendRating(Number(btn.dataset.rating));
+        await loadRecommendations();
+    });
 });
 
 $("likeBtn").addEventListener("click", async () => {
-    await sendRating(5);
+    await sendRating(10);
     await sendInteraction("LIKE");
     await loadRecommendations();
 });

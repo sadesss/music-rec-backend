@@ -12,7 +12,7 @@ public class UpsertRatingRequest {
     private UUID trackId;
 
     /**
-     * Allowed: -1 and 1..5
+     * Allowed: 1..10
      */
     @NotNull
     private Integer value;

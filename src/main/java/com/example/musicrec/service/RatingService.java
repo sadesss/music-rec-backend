@@ -10,7 +10,9 @@ import com.example.musicrec.repository.RatingRepository;
 import com.example.musicrec.repository.TrackRepository;
 import com.example.musicrec.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -22,6 +24,7 @@ public class RatingService {
     private final UserRepository userRepository;
     private final TrackRepository trackRepository;
 
+    @Transactional
     public Rating upsertForUser(UUID userId, UpsertRatingRequest req) {
         validateValue(req.getValue());
 
@@ -31,20 +34,33 @@ public class RatingService {
         Track track = trackRepository.findById(req.getTrackId())
                 .orElseThrow(() -> new NotFoundException("Track not found: " + req.getTrackId()));
 
-        Rating r = ratingRepository.findByUserIdAndTrackId(user.getId(), track.getId()).orElseGet(Rating::new);
-        r.setUser(user);
-        r.setTrack(track);
-        r.setValue(req.getValue());
+        Rating rating = ratingRepository.findByUserIdAndTrackId(user.getId(), track.getId())
+                .orElseGet(() -> {
+                    Rating r = new Rating();
+                    r.setUser(user);
+                    r.setTrack(track);
+                    return r;
+                });
 
-        return ratingRepository.save(r);
+        rating.setValue(req.getValue());
+
+        try {
+            return ratingRepository.saveAndFlush(rating);
+        } catch (DataIntegrityViolationException e) {
+            Rating existing = ratingRepository.findByUserIdAndTrackId(user.getId(), track.getId())
+                    .orElseThrow(() -> e);
+
+            existing.setValue(req.getValue());
+            return ratingRepository.saveAndFlush(existing);
+        }
     }
 
     private void validateValue(Integer v) {
         if (v == null) {
             throw new BadRequestException("Rating value is required");
         }
-        if (v < 1 || v > 5) {
-            throw new BadRequestException("Rating value must be in [1..5]. Got: " + v);
+        if (v < 1 || v > 10) {
+            throw new BadRequestException("Rating value must be in [1..10]. Got: " + v);
         }
     }
 }
