@@ -5,11 +5,22 @@ const state = {
     me: null,
     tracks: [],
     filteredTracks: [],
+    recommendations: [],
+    currentRecommendationIndex: -1,
     currentTrack: null,
     audioEl: null
 };
 
 const $ = (id) => document.getElementById(id);
+
+const INTERACTION_LABELS = {
+    PLAY: "Воспроизведение",
+    PAUSE: "Пауза",
+    SKIP: "Пропуск",
+    FINISH: "Завершение",
+    LIKE: "Мне нравится",
+    DISLIKE: "Мне не нравится"
+};
 
 function setStatus(text) {
     $("playerStatus").textContent = text;
@@ -27,6 +38,22 @@ function escapeHtml(str) {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+}
+
+function formatDuration(seconds) {
+    const value = Number(seconds);
+    if (!Number.isFinite(value) || value <= 0) {
+        return "—";
+    }
+
+    const rounded = Math.round(value);
+    const minutes = Math.floor(rounded / 60);
+    const restSeconds = String(rounded % 60).padStart(2, "0");
+    return `${minutes}:${restSeconds}`;
+}
+
+function getTrackGenre(track) {
+    return track.originalGenre || track.genre || "—";
 }
 
 async function authFetch(url, options = {}) {
@@ -108,28 +135,16 @@ async function logout() {
 function showTrackDetails(track) {
     const details = $("trackDetails");
     if (!track) {
-        details.innerHTML = `<div class="empty-state-small">Выбери трек, чтобы увидеть его свойства и признаки.</div>`;
+        details.innerHTML = `<div class="empty-state-small">Выбери трек, чтобы увидеть основные данные.</div>`;
         return;
     }
 
-    const features = track.features || {};
-    const featuresHtml = Object.keys(features).length
-        ? Object.entries(features).map(([k, v]) => `
-            <div class="detail-item">
-                <div class="detail-key">${escapeHtml(k)}</div>
-                <div class="detail-value">${escapeHtml(String(v))}</div>
-            </div>
-        `).join("")
-        : `<div class="empty-state-small">Признаки ещё не рассчитаны.</div>`;
-
     details.innerHTML = `
-        <div class="detail-item"><div class="detail-key">ID</div><div class="detail-value">${escapeHtml(track.id)}</div></div>
         <div class="detail-item"><div class="detail-key">Название</div><div class="detail-value">${escapeHtml(track.title || "—")}</div></div>
         <div class="detail-item"><div class="detail-key">Исполнитель</div><div class="detail-value">${escapeHtml(track.artist || "—")}</div></div>
         <div class="detail-item"><div class="detail-key">Альбом</div><div class="detail-value">${escapeHtml(track.album || "—")}</div></div>
-        <div class="detail-item"><div class="detail-key">Жанр</div><div class="detail-value">${escapeHtml(track.originalGenre || "—")}</div></div>
-        <div class="detail-item"><div class="detail-key">Длительность</div><div class="detail-value">${track.durationSeconds ?? "—"}</div></div>
-        ${featuresHtml}
+        <div class="detail-item"><div class="detail-key">Жанр</div><div class="detail-value">${escapeHtml(getTrackGenre(track))}</div></div>
+        <div class="detail-item"><div class="detail-key">Длительность</div><div class="detail-value">${formatDuration(track.durationSeconds)}</div></div>
     `;
 }
 
@@ -167,13 +182,20 @@ function renderTracksList() {
     `).join("");
 
     container.querySelectorAll(".track-card").forEach(btn => {
-        btn.addEventListener("click", () => selectTrack(btn.dataset.trackId));
+        btn.addEventListener("click", () => {
+            state.currentRecommendationIndex = -1;
+            selectTrack(btn.dataset.trackId);
+        });
     });
 }
 
-async function selectTrack(trackId) {
+async function selectTrack(trackId, options = {}) {
     const track = await apiGet(`/api/v1/tracks/${trackId}`);
     state.currentTrack = track;
+
+    if (typeof options.recommendationIndex === "number") {
+        state.currentRecommendationIndex = options.recommendationIndex;
+    }
 
     $("currentTrackTitle").textContent = track.title || "Без названия";
     $("currentTrackMeta").textContent = `${track.artist || "Неизвестный исполнитель"} • ${track.album || "Без альбома"}`;
@@ -181,6 +203,12 @@ async function selectTrack(trackId) {
     state.audioEl.src = `/api/v1/tracks/${track.id}/stream`;
     showTrackDetails(track);
     setStatus(`Выбран трек: ${track.title || track.id}`);
+}
+
+async function selectAndPlayTrack(trackId, options = {}) {
+    await selectTrack(trackId, options);
+    await state.audioEl.play();
+    await sendInteraction("PLAY");
 }
 
 async function sendInteraction(type) {
@@ -200,29 +228,11 @@ async function sendInteraction(type) {
             })
         });
 
-        setStatus(`Событие ${type} отправлено`);
+        setStatus(`Событие «${INTERACTION_LABELS[type] || type}» отправлено`);
     } catch (e) {
-        setStatus(`Ошибка interaction: ${e.message}`);
+        setStatus(`Ошибка отправки события: ${e.message}`);
     }
 }
-document.querySelectorAll("[data-rating]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-        await sendRating(Number(btn.dataset.rating));
-        await loadRecommendations();
-    });
-});
-
-$("likeBtn").addEventListener("click", async () => {
-    await sendRating(10);
-    await sendInteraction("LIKE");
-    await loadRecommendations();
-});
-
-$("dislikeBtn").addEventListener("click", async () => {
-    await sendRating(1);
-    await sendInteraction("DISLIKE");
-    await loadRecommendations();
-});
 
 async function sendRating(value) {
     if (!state.currentTrack) {
@@ -242,7 +252,7 @@ async function sendRating(value) {
 
         setStatus(`Оценка ${value} сохранена`);
     } catch (e) {
-        setStatus(`Ошибка rating: ${e.message}`);
+        setStatus(`Ошибка сохранения оценки: ${e.message}`);
     }
 }
 
@@ -252,10 +262,11 @@ async function loadRecommendations() {
             method: "GET"
         });
 
-        renderRecommendations(response.items || []);
-        setStatus(`Рекомендации загружены: ${response.items?.length ?? 0}`);
+        state.recommendations = response.items || [];
+        renderRecommendations(state.recommendations);
+        setStatus(`Рекомендации загружены: ${state.recommendations.length}`);
     } catch (e) {
-        setStatus(`Ошибка рекомендаций: ${e.message}`);
+        setStatus(`Ошибка загрузки рекомендаций: ${e.message}`);
     }
 }
 
@@ -267,23 +278,84 @@ function renderRecommendations(items) {
         return;
     }
 
-    container.innerHTML = items.map(item => `
-        <button class="recommendation-item" data-track-id="${item.trackId}">
+    container.innerHTML = items.map((item, index) => `
+        <button class="recommendation-item" data-track-id="${item.trackId}" data-index="${index}">
             <div>
                 <div class="recommendation-title">${escapeHtml(item.title || item.trackId)}</div>
                 <div class="recommendation-meta">
                     ${escapeHtml(item.artist || "Неизвестный исполнитель")}
-                    • score: ${item.score ?? "—"}
-                    • model: ${escapeHtml(item.modelVersion || "—")}
+                    ${item.album ? ` • ${escapeHtml(item.album)}` : ""}
                 </div>
             </div>
-            <span class="recommendation-rank">#${item.rank ?? "?"}</span>
         </button>
     `).join("");
 
     container.querySelectorAll(".recommendation-item").forEach(btn => {
-        btn.addEventListener("click", () => selectTrack(btn.dataset.trackId));
+        btn.addEventListener("click", () => {
+            selectTrack(btn.dataset.trackId, {
+                recommendationIndex: Number(btn.dataset.index)
+            });
+        });
     });
+}
+
+function findCurrentRecommendationIndex() {
+    if (state.currentRecommendationIndex >= 0) {
+        return state.currentRecommendationIndex;
+    }
+
+    if (!state.currentTrack) {
+        return -1;
+    }
+
+    return state.recommendations.findIndex(item => item.trackId === state.currentTrack.id);
+}
+
+async function playNextRecommendation() {
+    if (!state.recommendations.length) {
+        await loadRecommendations();
+    }
+
+    if (!state.recommendations.length) {
+        setStatus("Нет следующего трека в потоке рекомендаций");
+        return;
+    }
+
+    const currentIndex = findCurrentRecommendationIndex();
+    let nextIndex = currentIndex + 1;
+
+    if (nextIndex < 0) {
+        nextIndex = 0;
+    }
+
+    if (nextIndex >= state.recommendations.length) {
+        await loadRecommendations();
+
+        if (!state.recommendations.length) {
+            setStatus("Нет следующего трека в потоке рекомендаций");
+            return;
+        }
+
+        nextIndex = 0;
+
+        if (state.currentTrack && state.recommendations.length > 1 && state.recommendations[0].trackId === state.currentTrack.id) {
+            nextIndex = 1;
+        }
+    }
+
+    const nextItem = state.recommendations[nextIndex];
+
+    if (!nextItem?.trackId) {
+        setStatus("Следующий трек в потоке не найден");
+        return;
+    }
+
+    state.currentRecommendationIndex = nextIndex;
+    await selectAndPlayTrack(nextItem.trackId, {
+        recommendationIndex: nextIndex
+    });
+
+    setStatus(`Включен следующий трек из потока: ${nextItem.title || nextItem.trackId}`);
 }
 
 function bindEvents() {
@@ -314,10 +386,16 @@ function bindEvents() {
     });
 
     $("skipBtn").addEventListener("click", async () => {
+        if (!state.currentTrack) {
+            await playNextRecommendation();
+            return;
+        }
+
         state.audioEl.pause();
         state.audioEl.currentTime = 0;
+
         await sendInteraction("SKIP");
-        await loadRecommendations();
+        await playNextRecommendation();
     });
 
     $("replayBtn").addEventListener("click", async () => {
@@ -330,15 +408,30 @@ function bindEvents() {
         await sendInteraction("PLAY");
     });
 
-    $("logoutBtn").addEventListener("click", logout);
+    $("likeBtn").addEventListener("click", async () => {
+        await sendRating(10);
+        await sendInteraction("LIKE");
+        await loadRecommendations();
+    });
+
+    $("dislikeBtn").addEventListener("click", async () => {
+        await sendRating(1);
+        await sendInteraction("DISLIKE");
+        await loadRecommendations();
+    });
 
     document.querySelectorAll("[data-rating]").forEach(btn => {
-        btn.addEventListener("click", () => sendRating(btn.dataset.rating));
+        btn.addEventListener("click", async () => {
+            await sendRating(Number(btn.dataset.rating));
+            await loadRecommendations();
+        });
     });
+
+    $("logoutBtn").addEventListener("click", logout);
 
     state.audioEl.addEventListener("ended", async () => {
         await sendInteraction("FINISH");
-        await loadRecommendations();
+        await playNextRecommendation();
     });
 }
 

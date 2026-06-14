@@ -3,17 +3,17 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MusicRec Player</title>
+    <title>MusicRec Плеер</title>
     <link rel="stylesheet" href="/css/app.css" />
     <style>
         .page-grid {
             display: grid;
-            grid-template-columns: 340px 1fr 380px;
-            gap: 20px;
+            grid-template-columns: 420px minmax(620px, 1fr) 430px;
+            gap: 24px;
         }
 
         .panel-pad {
-            padding: 24px;
+            padding: 28px;
         }
 
         .panel-gap {
@@ -29,9 +29,9 @@
 
         .detail-item {
             display: grid;
-            grid-template-columns: 140px 1fr;
+            grid-template-columns: 150px 1fr;
             gap: 12px;
-            padding: 10px 12px;
+            padding: 12px 14px;
             border-radius: 12px;
             background: rgba(255,255,255,0.04);
             border: 1px solid rgba(255,255,255,0.06);
@@ -126,10 +126,10 @@
             <audio id="audioPlayer" controls preload="none" style="width: 100%;"></audio>
 
             <div class="control-row">
-                <button id="playBtn" class="btn-soft">Play</button>
-                <button id="pauseBtn" class="btn-soft">Pause</button>
-                <button id="skipBtn" class="btn-soft">Skip</button>
-                <button id="replayBtn" class="btn-soft">Replay</button>
+                <button id="playBtn" class="btn-soft">Воспроизвести</button>
+                <button id="pauseBtn" class="btn-soft">Пауза</button>
+                <button id="skipBtn" class="btn-soft">Пропустить</button>
+                <button id="replayBtn" class="btn-soft">Повторить</button>
             </div>
 
             <div class="rating-scale-block">
@@ -137,36 +137,38 @@
                     <span>Оценка трека</span>
                     <span class="rating-scale-hint">1 — худшая, 10 — лучшая</span>
                 </div>
-                <div class="rating-row rating-row-10">
-                    <button data-rating="1" class="btn-soft rating-btn rating-btn-1">1</button>
-                    <button data-rating="2" class="btn-soft rating-btn rating-btn-2">2</button>
-                    <button data-rating="3" class="btn-soft rating-btn rating-btn-3">3</button>
-                    <button data-rating="4" class="btn-soft rating-btn rating-btn-4">4</button>
-                    <button data-rating="5" class="btn-soft rating-btn rating-btn-5">5</button>
-                    <button data-rating="6" class="btn-soft rating-btn rating-btn-6">6</button>
-                    <button data-rating="7" class="btn-soft rating-btn rating-btn-7">7</button>
-                    <button data-rating="8" class="btn-soft rating-btn rating-btn-8">8</button>
-                    <button data-rating="9" class="btn-soft rating-btn rating-btn-9">9</button>
-                    <button data-rating="10" class="btn-soft rating-btn rating-btn-10">10</button>
-                </div>
-            </div>
 
-            <div class="rating-row">
-                <button id="likeBtn" class="btn-soft btn-like">Мне нравится</button>
-                <button id="dislikeBtn" class="btn-soft btn-dislike">Мне не нравится</button>
+                <div class="rating-line">
+                    <button id="dislikeBtn" class="btn-soft btn-dislike">Мне не нравится</button>
+
+                    <div class="rating-row rating-row-10" aria-label="Оценка от 1 до 10">
+                        <button data-rating="1" class="btn-soft rating-btn rating-btn-1">1</button>
+                        <button data-rating="2" class="btn-soft rating-btn rating-btn-2">2</button>
+                        <button data-rating="3" class="btn-soft rating-btn rating-btn-3">3</button>
+                        <button data-rating="4" class="btn-soft rating-btn rating-btn-4">4</button>
+                        <button data-rating="5" class="btn-soft rating-btn rating-btn-5">5</button>
+                        <button data-rating="6" class="btn-soft rating-btn rating-btn-6">6</button>
+                        <button data-rating="7" class="btn-soft rating-btn rating-btn-7">7</button>
+                        <button data-rating="8" class="btn-soft rating-btn rating-btn-8">8</button>
+                        <button data-rating="9" class="btn-soft rating-btn rating-btn-9">9</button>
+                        <button data-rating="10" class="btn-soft rating-btn rating-btn-10">10</button>
+                    </div>
+
+                    <button id="likeBtn" class="btn-soft btn-like">Мне нравится</button>
+                </div>
             </div>
 
             <div class="spacer"></div>
 
             <div id="trackDetails" class="detail-grid">
-                <div class="empty-state-small">Выбери трек, чтобы увидеть его свойства и признаки.</div>
+                <div class="empty-state-small">Выбери трек, чтобы увидеть основные данные.</div>
             </div>
         </section>
 
         <section class="glass-card panel-pad panel-gap">
             <div class="section-header">
                 <h2>Рекомендации</h2>
-                <span class="section-badge">Top 20</span>
+                <span class="section-badge">Топ-20</span>
             </div>
 
             <div id="recommendationsList" class="stack-list">

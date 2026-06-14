@@ -132,10 +132,10 @@ function trackCard(track) {
       <div><strong>Жанр:</strong> ${genre}</div>
       <audio controls preload="none" src="${audioUrl}" data-track-id="${track.id}"></audio>
       <div>
-        <button onclick="onPlay('${track.id}')">PLAY</button>
-        <button onclick="onFinish('${track.id}')">FINISH</button>
-        <button onclick="onLike('${track.id}')">LIKE</button>
-        <button onclick="onDislike('${track.id}')">DISLIKE</button>
+        <button onclick="onPlay('${track.id}')">Воспроизвести</button>
+        <button onclick="onFinish('${track.id}')">Завершить</button>
+        <button onclick="onLike('${track.id}')">Мне нравится</button>
+        <button onclick="onDislike('${track.id}')">Мне не нравится</button>
       </div>
     </div>
   `;
@@ -164,10 +164,10 @@ function recoCard(item) {
       <div><strong>Причина:</strong> ${reason}</div>
       <audio controls preload="none" src="${audioUrl}" data-track-id="${item.trackId}"></audio>
       <div>
-        <button onclick="onPlay('${item.trackId}')">PLAY</button>
-        <button onclick="onFinish('${item.trackId}')">FINISH</button>
-        <button onclick="onLike('${item.trackId}')">LIKE</button>
-        <button onclick="onDislike('${item.trackId}')">DISLIKE</button>
+        <button onclick="onPlay('${item.trackId}')">Воспроизвести</button>
+        <button onclick="onFinish('${item.trackId}')">Завершить</button>
+        <button onclick="onLike('${item.trackId}')">Мне нравится</button>
+        <button onclick="onDislike('${item.trackId}')">Мне не нравится</button>
       </div>
     </div>
   `;
@@ -186,9 +186,9 @@ function wireAudioEvents(containerId) {
       audio.addEventListener("play", async () => {
         try {
           await sendInteraction({ trackId, type: "PLAY" });
-          setStatus(`Сохранено: PLAY ${trackId}`);
+          setStatus(`Сохранено: воспроизведение ${trackId}`);
         } catch (e) {
-          setStatus(`Ошибка PLAY:\n${e.message}`);
+          setStatus(`Ошибка воспроизведения:\n${e.message}`);
         }
       });
 
@@ -200,9 +200,9 @@ function wireAudioEvents(containerId) {
             type: "PAUSE",
             positionMs: Math.floor((audio.currentTime || 0) * 1000)
           });
-          setStatus(`Сохранено: PAUSE ${trackId}`);
+          setStatus(`Сохранено: пауза ${trackId}`);
         } catch (e) {
-          setStatus(`Ошибка PAUSE:\n${e.message}`);
+          setStatus(`Ошибка паузы:\n${e.message}`);
         }
       });
 
@@ -213,10 +213,10 @@ function wireAudioEvents(containerId) {
             type: "FINISH",
             positionMs: Math.floor((audio.duration || 0) * 1000)
           });
-          setStatus(`Сохранено: FINISH ${trackId}`);
+          setStatus(`Сохранено: завершение прослушивания ${trackId}`);
           await loadRecommendations();
         } catch (e) {
-          setStatus(`Ошибка FINISH:\n${e.message}`);
+          setStatus(`Ошибка завершения прослушивания:\n${e.message}`);
         }
       });
 
@@ -267,7 +267,7 @@ async function loadRecommendations() {
 async function onPlay(trackId) {
   try {
     await sendInteraction({ trackId, type: "PLAY" });
-    setStatus("Сохранено: PLAY " + trackId);
+    setStatus("Сохранено: воспроизведение " + trackId);
     await loadRecommendations();
   } catch (e) {
     setStatus(e.message);
@@ -277,7 +277,7 @@ async function onPlay(trackId) {
 async function onFinish(trackId) {
   try {
     await sendInteraction({ trackId, type: "FINISH" });
-    setStatus("Сохранено: FINISH " + trackId);
+    setStatus("Сохранено: завершение прослушивания " + trackId);
     await loadRecommendations();
   } catch (e) {
     setStatus(e.message);
@@ -288,7 +288,7 @@ async function onLike(trackId) {
   try {
     await rate({ trackId, value: 1 });
     await sendInteraction({ trackId, type: "LIKE" });
-    setStatus("Сохранено: LIKE " + trackId);
+    setStatus("Сохранено: отметка «Мне нравится» " + trackId);
     await loadRecommendations();
   } catch (e) {
     setStatus(e.message);
@@ -299,7 +299,7 @@ async function onDislike(trackId) {
   try {
     await rate({ trackId, value: -1 });
     await sendInteraction({ trackId, type: "DISLIKE" });
-    setStatus("Сохранено: DISLIKE " + trackId);
+    setStatus("Сохранено: отметка «Мне не нравится» " + trackId);
     await loadRecommendations();
   } catch (e) {
     setStatus(e.message);

@@ -607,6 +607,89 @@ async function analyzeTrack() {
     logAdmin(`Анализ завершён: features=${response.featuresUpserted}`);
 }
 
+function formatDuration(seconds) {
+    if (seconds === null || seconds === undefined || Number.isNaN(Number(seconds))) {
+        return "—";
+    }
+
+    const totalSeconds = Math.max(0, Math.floor(Number(seconds)));
+    const minutes = Math.floor(totalSeconds / 60);
+    const restSeconds = String(totalSeconds % 60).padStart(2, "0");
+
+    return `${minutes}:${restSeconds}`;
+}
+
+function ensureAdminTrackDetailsPanel() {
+    let panel = admin$("adminTrackDetails");
+    if (panel) {
+        return panel;
+    }
+
+    const list = admin$("adminTracksList");
+    if (!list?.parentElement) {
+        return null;
+    }
+
+    const wrapper = document.createElement("div");
+    wrapper.id = "adminTrackDetails";
+    wrapper.className = "detail-grid";
+    wrapper.style.marginTop = "16px";
+    wrapper.innerHTML = `<div class="terminal-line">Выберите трек из каталога, чтобы увидеть его метаданные.</div>`;
+
+    list.parentElement.appendChild(wrapper);
+    return wrapper;
+}
+
+function renderAdminTrackDetails(track) {
+    const panel = ensureAdminTrackDetailsPanel();
+    if (!panel) {
+        return;
+    }
+
+    if (!track) {
+        panel.innerHTML = `<div class="terminal-line">Выберите трек из каталога, чтобы увидеть его метаданные.</div>`;
+        return;
+    }
+
+    const features = track.features || {};
+    const featuresHtml = Object.keys(features).length
+        ? `
+            <div class="track-card-submeta" style="margin-top: 6px; margin-bottom: 8px;">Рассчитанные метаданные</div>
+            ${Object.entries(features).map(([key, value]) => `
+                <div class="detail-item">
+                    <div class="detail-key">${escapeHtml(key)}</div>
+                    <div class="detail-value">${escapeHtml(String(value))}</div>
+                </div>
+            `).join("")}
+        `
+        : `<div class="terminal-line">Рассчитанные метаданные ещё не доступны. Запустите анализ трека.</div>`;
+
+    panel.innerHTML = `
+        <div class="track-card-submeta" style="margin-bottom: 8px;">Основные метаданные</div>
+        <div class="detail-item"><div class="detail-key">ID</div><div class="detail-value">${escapeHtml(track.id || "—")}</div></div>
+        <div class="detail-item"><div class="detail-key">Название</div><div class="detail-value">${escapeHtml(track.title || "—")}</div></div>
+        <div class="detail-item"><div class="detail-key">Исполнитель</div><div class="detail-value">${escapeHtml(track.artist || "—")}</div></div>
+        <div class="detail-item"><div class="detail-key">Альбом</div><div class="detail-value">${escapeHtml(track.album || "—")}</div></div>
+        <div class="detail-item"><div class="detail-key">Жанр</div><div class="detail-value">${escapeHtml(track.originalGenre || "—")}</div></div>
+        <div class="detail-item"><div class="detail-key">Длительность</div><div class="detail-value">${formatDuration(track.durationSeconds)}</div></div>
+        ${featuresHtml}
+    `;
+}
+
+async function selectAdminTrack(trackId) {
+    try {
+        const track = await fetch(`/api/v1/tracks/${encodeURIComponent(trackId)}`).then(async r => {
+            if (!r.ok) throw new Error(await r.text());
+            return r.json();
+        });
+
+        renderAdminTrackDetails(track);
+        logAdmin(`Выбран трек: ${track.title || track.id}`);
+    } catch (e) {
+        logAdmin(`Ошибка загрузки метаданных трека: ${e.message}`, true);
+    }
+}
+
 async function loadTracks() {
     const tracks = await fetch("/api/v1/tracks").then(async r => {
         if (!r.ok) throw new Error(await r.text());
@@ -614,20 +697,26 @@ async function loadTracks() {
     });
 
     const list = admin$("adminTracksList");
+    ensureAdminTrackDetailsPanel();
 
     if (!tracks.length) {
         list.innerHTML = `<div class="terminal-line">Треков пока нет.</div>`;
+        renderAdminTrackDetails(null);
         return;
     }
 
     list.innerHTML = tracks.map(track => `
-        <div class="track-card static-track-card">
+        <button type="button" class="track-card static-track-card" data-admin-track-id="${escapeHtml(track.id)}">
             <div class="track-card-title">${escapeHtml(track.title || "Без названия")}</div>
             <div class="track-card-meta">${escapeHtml(track.artist || "Неизвестный исполнитель")}</div>
             <div class="track-card-submeta">${escapeHtml(track.album || "Без альбома")}</div>
             <div class="track-card-submeta">${escapeHtml(track.id)}</div>
-        </div>
+        </button>
     `).join("");
+
+    list.querySelectorAll("[data-admin-track-id]").forEach((button) => {
+        button.addEventListener("click", () => selectAdminTrack(button.dataset.adminTrackId));
+    });
 }
 
 async function logout() {

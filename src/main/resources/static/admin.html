@@ -96,6 +96,30 @@
             min-width: 240px;
         }
 
+        .admin-hero-main {
+            display: flex;
+            align-items: center;
+            gap: 26px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .admin-hero-text {
+            min-width: 0;
+        }
+
+        .admin-hero-image {
+            width: 138px;
+            height: 138px;
+            flex: 0 0 138px;
+            border-radius: 26px;
+            object-fit: cover;
+            object-position: center;
+            border: 1px solid rgba(255,255,255,0.14);
+            background: rgba(255,255,255,0.06);
+            box-shadow: 0 18px 34px rgba(0, 0, 0, 0.30);
+        }
+
         .full-width {
             width: 100%;
         }
@@ -347,6 +371,17 @@
             .admin-grid {
                 grid-template-columns: 1fr;
             }
+
+            .admin-hero-main {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .admin-hero-image {
+                width: 118px;
+                height: 118px;
+                flex-basis: 118px;
+            }
         }
 
         @media (max-width: 760px) {
@@ -362,12 +397,14 @@
 <body class="app-body">
 <div class="app-shell">
     <section class="hero-bar admin-hero">
-        <div>
-            <div class="hero-pill">MusicRec</div>
-            <h1 class="hero-title">Панель администратора</h1>
-            <p class="hero-subtitle">
-                Управление каталогом, настройка параметров рекомендательной модели, запуск обучения и расчет метрик качества.
-            </p>
+        <div class="admin-hero-main">
+            <div class="admin-hero-text">
+                <div class="hero-pill">MusicRec</div>
+                <h1 class="hero-title">Панель администратора</h1>
+                <p class="hero-subtitle">
+                    Управление каталогом, настройка параметров рекомендательной модели, запуск обучения и расчет метрик качества.
+                </p>
+            </div>
         </div>
 
         <div class="admin-top">

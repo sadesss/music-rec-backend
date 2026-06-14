@@ -13,6 +13,7 @@ public class RecommendationItemResponse {
     String artist;
     String album;
     String originalGenre;
+    Integer durationSeconds;
     String audioUrl;
 
     Double score;
