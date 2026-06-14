@@ -8,7 +8,8 @@ const state = {
     recommendations: [],
     currentRecommendationIndex: -1,
     currentTrack: null,
-    audioEl: null
+    audioEl: null,
+    suppressPauseInteraction: false
 };
 
 const $ = (id) => document.getElementById(id);
@@ -208,7 +209,6 @@ async function selectTrack(trackId, options = {}) {
 async function selectAndPlayTrack(trackId, options = {}) {
     await selectTrack(trackId, options);
     await state.audioEl.play();
-    await sendInteraction("PLAY");
 }
 
 async function sendInteraction(type) {
@@ -371,28 +371,18 @@ function bindEvents() {
     $("trackSearch").addEventListener("input", applyTrackFilter);
     $("loadRecommendationsBtn").addEventListener("click", loadRecommendations);
 
-    $("playBtn").addEventListener("click", async () => {
-        if (!state.audioEl.src) {
-            setStatus("Сначала выбери трек");
-            return;
-        }
-        await state.audioEl.play();
-        await sendInteraction("PLAY");
-    });
-
-    $("pauseBtn").addEventListener("click", async () => {
-        state.audioEl.pause();
-        await sendInteraction("PAUSE");
-    });
-
     $("skipBtn").addEventListener("click", async () => {
         if (!state.currentTrack) {
             await playNextRecommendation();
             return;
         }
 
+        state.suppressPauseInteraction = true;
         state.audioEl.pause();
         state.audioEl.currentTime = 0;
+        setTimeout(() => {
+            state.suppressPauseInteraction = false;
+        }, 0);
 
         await sendInteraction("SKIP");
         await playNextRecommendation();
@@ -403,9 +393,14 @@ function bindEvents() {
             setStatus("Сначала выбери трек");
             return;
         }
+
+        const wasPaused = state.audioEl.paused;
         state.audioEl.currentTime = 0;
         await state.audioEl.play();
-        await sendInteraction("PLAY");
+
+        if (!wasPaused) {
+            await sendInteraction("PLAY");
+        }
     });
 
     $("likeBtn").addEventListener("click", async () => {
@@ -428,6 +423,18 @@ function bindEvents() {
     });
 
     $("logoutBtn").addEventListener("click", logout);
+
+    state.audioEl.addEventListener("play", async () => {
+        await sendInteraction("PLAY");
+    });
+
+    state.audioEl.addEventListener("pause", async () => {
+        if (state.suppressPauseInteraction || state.audioEl.ended) {
+            return;
+        }
+
+        await sendInteraction("PAUSE");
+    });
 
     state.audioEl.addEventListener("ended", async () => {
         await sendInteraction("FINISH");

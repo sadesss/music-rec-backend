@@ -451,7 +451,7 @@
 
                     <div class="setting-card">
                         <div class="setting-head">
-                            <div class="setting-title">Learning rate</div>
+                            <div class="setting-title">Скорость обучения</div>
                             <div class="setting-value" id="modelLearningRateValue">0.0003</div>
                         </div>
                         <input id="modelLearningRate" class="range-control" type="range" min="0.0001" max="0.0100" step="0.0001" value="0.0003" />
@@ -568,7 +568,7 @@
 
             <section class="glass-card panel-pad">
                 <div class="section-header">
-                    <h2>Обучение и расчет метрик</h2>
+                    <h2>Обучение модели</h2>
                     <span class="section-badge">ML</span>
                 </div>
 
@@ -587,8 +587,8 @@
 
                     <div class="admin-actions">
                         <button id="trainModelBtn" class="btn-soft">Запустить обучение</button>
-                        <button id="calculateMetricsBtn" class="btn-soft">Рассчитать метрики</button>
                     </div>
+
                     <div class="version-rollback-field" style="margin-top: 16px;">
                         <label class="admin-field-label" for="rollbackModelVersion" style="display: block; margin-bottom: 8px;">
                             Вернуться к версии модели:
@@ -625,6 +625,10 @@
                 <div class="section-header">
                     <h2>Метрики модели</h2>
                     <span class="section-badge">Quality</span>
+                </div>
+
+                <div class="admin-actions" style="margin-top: 16px;">
+                    <button id="calculateMetricsBtn" class="btn-soft">Рассчитать метрики</button>
                 </div>
 
                 <div id="metricsPanel" class="metrics-stage" style="margin-top: 16px;">
